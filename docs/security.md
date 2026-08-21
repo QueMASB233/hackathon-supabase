@@ -1,24 +1,35 @@
 # Seguridad
 
-La autoridad no está en el frontend.
+Autoridad: Auth JWT → autorización en API → RLS → Storage policies → rate limit → audit → guardrails.
 
-## Capas (cuando exista backend)
-
-Auth → autenticación de API → autorización → reglas de negocio → RLS → Storage policies → rate limiting → audit.
-
-Nunca confiar en botones ocultos, rutas “protegidas” solo en React, IDs, localStorage o condiciones JS.
-
-## Frontend P0
-
-- Sin `service_role`, sin password de DB, sin `OPENAI_API_KEY`.
-- Sesión en `sessionStorage` bajo clave opaca. No se loguea el token.
-- `GET /api/me` y capabilities mandan la UI. Un ID manipulado debe fallar en API (el mock responde 403 si José abre el workspace de María).
-- Rate limit: el UI muestra 429. No implementa el límite.
-
-## Demo
-
-Business Mathias abre José. Client José abre `/app/workspaces/ws-maria` → `FORBIDDEN`.
+El frontend no es la seguridad.
 
 ## Auth
 
-Passwordless. El código 2FA lo valida el backend. El mock acepta `123456` solo para desarrollar UI.
+Passwordless: Supabase Email OTP. El backend valida el JWT con `auth.getUser`. El body no puede enviar `role`.
+
+## Autorización
+
+`workspace_members.role` + `permissionsFor`. Client: ver/descargar/chat/IA. Business: clientes, upload, delete, audit.
+
+GET workspace ajeno → `403 FORBIDDEN` y evento `ACCESS_DENIED`. RLS devolvería cero filas aunque se omitiera el check.
+
+## Storage
+
+Bucket privado `workspace-documents`. Business: insert/update/delete. Member: select/download. Client no sube ni borra.
+
+## Rate limit
+
+In-memory por IP+ruta en: request-code, resend, verify, accept invite, upload, AI. `429 RATE_LIMITED`.
+
+## Audit
+
+Eventos: LOGIN, INVITATION_*, CLIENT_CREATED, WORKSPACE_CREATED, DOCUMENT_*, CONVERSATION_CREATED, AI_QUERY, AI_RESPONSE, ACCESS_DENIED, RATE_LIMITED (vía warn), GUARDRAIL_BLOCKED (cuando el rail deniega). Sin tokens, códigos ni keys.
+
+## Guardrails
+
+Sidecar NeMo / Colang en el path de IA. Fail-closed si el sidecar no responde.
+
+## Demo
+
+José → workspace María = 403. Download ajeno = 403. Prompt injection = `PROMPT_BLOCKED`. Pregunta por otro cliente = `OUT_OF_SCOPE`.

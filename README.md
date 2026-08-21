@@ -1,58 +1,38 @@
 # SecureWorkspace
 
-PWA B2B para workspaces privados de conocimiento. La experiencia principal no es un Drive: es **preguntarle al workspace**.
+PWA B2B de conocimiento seguro. El frontend es dumb; la autoridad es el backend + RLS.
 
 ## Arquitectura
 
 ```
-Frontend PWA (dumb)
-        │ API
-        ▼
-Backend (lógica, auth, guardrails, rate limit)
-        │
-        ├── Supabase (Postgres + RLS, Auth, Storage)
-        ├── OpenAI
-        └── NeMo Guardrails
+Frontend PWA
+    → HTTP API (Hono :8000)
+        → NeMo Guardrails sidecar (:8001)
+        → Supabase (Auth, Postgres+RLS, Storage)
+        → OpenAI
 ```
 
-El frontend **no** habla con la base de datos, **no** contiene secretos y **no** decide permisos. Renderiza lo que el API autoriza.
-
-En P0 el backend no existe. El cliente corre contra adapters mock (`VITE_API_MODE=mock`).
-
-## Cómo correr el frontend
+## Frontend (mock o API real)
 
 ```bash
 cd frontend
-cp .env.example .env   # ya viene en mock
+cp .env.example .env
 npm install
 npm run dev
 ```
 
-Demo passwordless:
+`VITE_API_MODE=mock` (default) o `http` contra `VITE_API_BASE_URL=http://localhost:8000`.
 
-1. Correo `mathias@mathias.sa` → código `123456` → dashboard business.
-2. Correo `jose@email.com` → código `123456` → workspace José S.A.
-3. Invitación: `/invite/invite-jose-contacto` (correo `contacto@jose.com`) → mismo código.
-4. Código `000000` = inválido. `999999` = expirado.
-5. Un client que abra `/app/workspaces/ws-maria` recibe 403.
+## Backend
 
-No hay contraseñas.
+Ver [`backend/README.md`](backend/README.md). Secretos solo en `backend/.env`.
 
-## Estructura
+## Demo passwordless
 
-```
-frontend/     PWA (este entregable)
-backend/      stub — API futura
-supabase/     migrations y functions (vacío en P0)
-docs/         arquitectura, API, seguridad, RAG, changelog
-```
+El login es correo + código OTP de 6 dígitos (Supabase Auth). No hay contraseñas.
 
-## Variables públicas
+Tras `npm run seed` en backend: `mathias@mathias.sa` (business) y `jose@email.com` (client). José no puede abrir el workspace de María (`403` + RLS).
 
-Solo en frontend, y solo públicas:
+## Secretos
 
-- `VITE_API_MODE=mock|http`
-- `VITE_API_BASE_URL` (cuando haya backend)
-- `VITE_SUPABASE_URL` queda comentada; no se usa en P0
-
-Nunca: `service_role`, database password, `OPENAI_API_KEY`.
+Nunca: `service_role`, database password, `OPENAI_API_KEY` en frontend, git o docs con valores reales.

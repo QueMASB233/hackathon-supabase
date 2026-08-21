@@ -1,56 +1,56 @@
 # API
 
-Contrato conceptual. El backend P0 **no está implementado**. El frontend se adapta al contrato real cuando exista.
+Contrato real implementado por `backend/` (Hono). Compatible con [`frontend/src/api/adapters/http/index.ts`](../frontend/src/api/adapters/http/index.ts).
 
-Auth es passwordless. No hay endpoints de password.
+Auth passwordless. No hay endpoints de password. El rol **nunca** viaja en el body.
+
+Errores (raíz, no anidados — el PWA lee `body.code`):
+
+```json
+{ "code": "FORBIDDEN", "message": "No tienes acceso a este recurso.", "requestId": "…" }
+```
+
+Códigos: `UNAUTHORIZED | FORBIDDEN | NOT_FOUND | CONFLICT | VALIDATION | RATE_LIMITED | SERVER | AI_BLOCKED | OUT_OF_SCOPE | PROMPT_BLOCKED | INVITE_PENDING | CODE_INVALID | CODE_EXPIRED`.
 
 ## Auth
 
-- `POST /api/auth/request-code` `{ email }`
-- `POST /api/auth/resend-code` `{ email }` → `{ retryAfterSec }`
-- `POST /api/auth/verify` `{ email, code }` → `{ token }`
-- `POST /api/auth/logout`
-- `GET /api/invites/:token`
-- `POST /api/invites/:token/accept` `{ email }`
+- `POST /api/auth/request-code` `{ email }` → `{ email }`
+- `POST /api/auth/resend-code` `{ email }` → `{ email, retryAfterSec }`
+- `POST /api/auth/verify` `{ email, code }` → `{ token }` (JWT de Supabase)
+- `POST /api/auth/logout` → 204
+- `GET /api/invites/:token` → preview (lookup por hash; sin sesión)
+- `POST /api/invites/:token/accept` `{ email }` → `{ email }`
 
-## Sesión y yo
+`request-code` solo para emails en `profiles` o invitaciones `accepted`. Invitación `pending` → `INVITE_PENDING`.
+
+## Sesión
 
 - `GET /api/me` → `{ id, email, displayName, organizationName, homePath, permissions[] }`
 
-`homePath` lo decide el backend. El frontend redirige ahí.
+`homePath` y `permissions` los calcula el backend.
 
 ## Clientes / workspaces
 
-- `GET /api/clients`
-- `POST /api/clients` (multipart: name, description, emails, icon)
-- `GET /api/workspaces/:id` → workspace + `capabilities` + `nav` + `suggestedQuestions`
+- `GET /api/clients` (business)
+- `POST /api/clients` multipart: `name`, `description`, `emails` JSON, `icon` opcional. Extra: `invites[{ email, url }]` (el PWA lo ignora).
+- `GET /api/workspaces/:id` → `capabilities`, `nav`, `suggestedQuestions`
 
 ## Documentos
 
 - `GET /api/workspaces/:id/documents`
-- `POST /api/workspaces/:id/documents`
+- `POST /api/workspaces/:id/documents` (file)
 - `DELETE /api/documents/:id`
-- `GET /api/documents/:id/download`
+- `GET /api/documents/:id/download` header `X-Filename`
 
-Estados de documento: `uploading | processing | chunking | indexing | ready | failed`. El frontend no calcula el pipeline.
+Estados: `uploading | processing | chunking | indexing | ready | failed`.
 
 ## Chat
 
-- `GET /api/workspaces/:id/conversations`
-- `POST /api/workspaces/:id/conversations`
-- `PATCH /api/conversations/:id`
-- `GET /api/conversations/:id/messages`
-- `POST /api/conversations/:id/messages`
-- `POST /api/ai/query` (stream de chunks: token / sources / done)
+- `GET|POST /api/workspaces/:id/conversations`
+- `PATCH /api/conversations/:id` `{ title }`
+- `GET|POST /api/conversations/:id/messages`
+- `POST /api/ai/query` `{ workspaceId, conversationId, content }` NDJSON: `token | sources | done`
 
 ## Auditoría
 
-- `GET /api/workspaces/:id/audit`
-
-## Errores
-
-El cuerpo puede incluir `code`:
-
-`UNAUTHORIZED | FORBIDDEN | NOT_FOUND | CONFLICT | VALIDATION | RATE_LIMITED | SERVER | AI_BLOCKED | OUT_OF_SCOPE | PROMPT_BLOCKED | INVITE_PENDING | CODE_INVALID | CODE_EXPIRED`
-
-El cliente HTTP está en `frontend/src/api/adapters/http`.
+- `GET /api/workspaces/:id/audit` (requiere `audit.view`)

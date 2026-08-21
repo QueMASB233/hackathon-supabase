@@ -1,9 +1,8 @@
 # IA
 
-OpenAI vive solo en el backend, por environment.
+OpenAI solo en backend (`OPENAI_API_KEY` de entorno).
 
-Flujo: Frontend → API → authz → guardrails → RAG → OpenAI → respuesta.
+- Embeddings: `text-embedding-3-small` (1536)
+- Chat: `gpt-4o-mini` (configurable)
 
-`POST /api/ai/query` puede streamear. El PWA pinta tokens y luego `sources`.
-
-No hay `OPENAI_API_KEY` en frontend, README ni docs públicas con valores reales.
+`POST /api/ai/query` strea NDJSON al PWA. El modelo no recibe el system mezclado con chunks: el contexto va delimitado como datos no confiables.

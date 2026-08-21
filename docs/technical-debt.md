@@ -4,15 +4,15 @@
 
 ### Problema
 
-El frontend corre contra `src/api/adapters/mock`, no contra un backend real.
+El frontend default sigue en `VITE_API_MODE=mock`.
 
 ### Impacto
 
-Los datos, permisos y respuestas de IA son de demostración. No hay seguridad real ni RAG.
+Sin cambiar el env, la demo no golpea RLS real.
 
 ### Solución futura
 
-Implementar backend, apuntar `VITE_API_MODE=http`, borrar o aislar mocks de producción.
+Apuntar `http` en el entorno de demo.
 
 ### Prioridad
 
@@ -22,15 +22,15 @@ High
 
 ### Problema
 
-Auth passwordless está mockeada (código fijo `123456`). No hay envío real de correo ni Supabase Auth.
+OTP real depende de Email OTP + SMTP/Inbucket en el proyecto Supabase.
 
 ### Impacto
 
-Cualquiera que conozca el demo entra. Inaceptable en producción.
+Sin proveedor de correo no llega el código de 6 dígitos.
 
 ### Solución futura
 
-Backend + Supabase Auth (OTP). Frontend ya habla `requestCode` / `verifyCode`.
+Configurar Auth > Providers > Email OTP en el dashboard.
 
 ### Prioridad
 
@@ -40,15 +40,15 @@ High
 
 ### Problema
 
-Upload HTTP no reporta progreso byte a byte en el adapter `http` (el mock sí simula).
+Upload HTTP del PWA no reporta progreso byte a byte.
 
 ### Impacto
 
-La barra de progreso en modo live puede saltar a completo.
+La barra puede saltar a completo.
 
 ### Solución futura
 
-XHR o fetch con progreso cuando el backend exista.
+XHR/fetch progress.
 
 ### Prioridad
 
@@ -58,16 +58,80 @@ Low
 
 ### Problema
 
-Command palette quedó fuera (P2).
-
-### Impacto
-
-Atajos de teclado limitados.
-
-### Solución futura
-
-P2.
+Command palette quedó fuera (P2 frontend).
 
 ### Prioridad
 
 Low
+
+## TD-005
+
+### Problema
+
+Rate limit es in-memory por proceso.
+
+### Impacto
+
+No se comparte entre réplicas; se reinicia al redesplegar.
+
+### Solución futura
+
+Redis o tabla `rate_limit_events`.
+
+### Prioridad
+
+Medium
+
+## TD-006
+
+### Problema
+
+Worker de documentos es in-process (`void processDocument`).
+
+### Impacto
+
+Un restart pierde jobs a medias (quedan `failed` o colgados).
+
+### Solución futura
+
+Cola persistente.
+
+### Prioridad
+
+Medium
+
+## TD-007
+
+### Problema
+
+NeMo `LLMRails` es opcional: el sidecar aplica Colang de forma determinista y solo llama el runtime NVIDIA si importa.
+
+### Impacto
+
+Sin `nemoguardrails` instalado, las reglas siguen activas pero no hay LLM-as-judge.
+
+### Solución futura
+
+Exigir el paquete en el entorno de demo.
+
+### Prioridad
+
+Medium
+
+## TD-008
+
+### Problema
+
+`POST /api/clients` devuelve `invites[].url` porque el PWA no tiene pantalla de “copiar enlace”.
+
+### Impacto
+
+Hay que leer la respuesta o el seed para compartir `/invite/:token`.
+
+### Solución futura
+
+Email transaccional o UI de invitaciones (P1).
+
+### Prioridad
+
+Medium
