@@ -26,6 +26,24 @@ export class OpenAiService {
     return Boolean(this.client)
   }
 
+  /**
+   * A present key is not a working key. Validates credentials without
+   * spending tokens, so a bad key is visible before a query fails.
+   */
+  async probe(): Promise<{ configured: boolean; ok: boolean; reason?: string }> {
+    if (!this.client) return { configured: false, ok: false, reason: 'OPENAI_API_KEY ausente' }
+    try {
+      await this.client.models.list()
+      return { configured: true, ok: true }
+    } catch (error) {
+      return {
+        configured: true,
+        ok: false,
+        reason: error instanceof Error ? error.message : 'clave rechazada',
+      }
+    }
+  }
+
   async embed(text: string): Promise<number[]> {
     if (!this.client) throw serverError('OpenAI no está configurado.')
     const response = await this.client.embeddings.create({

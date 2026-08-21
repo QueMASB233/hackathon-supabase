@@ -81,12 +81,13 @@ export function createApp(deps: AppDeps) {
         return false
       }
     }
-    const [guardrails, database] = await Promise.all([deps.guardrails.ping(), probeDatabase()])
-    const openai = deps.openai.enabled()
-    return c.json(
-      { ok: guardrails && database && openai, guardrails, database, openai },
-      guardrails && database && openai ? 200 : 503,
-    )
+    const [guardrails, database, openai] = await Promise.all([
+      deps.guardrails.ping(),
+      probeDatabase(),
+      deps.openai.probe(),
+    ])
+    const ok = guardrails && database && openai.ok
+    return c.json({ ok, guardrails, database, openai }, ok ? 200 : 503)
   })
 
   app.route('/api/auth', authRoutes(deps))
