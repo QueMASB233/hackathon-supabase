@@ -1,18 +1,26 @@
 # Base de datos
 
-P0 no incluye schema. No hay SQL fuera de `supabase/migrations/`.
+SQL versionado en `supabase/migrations/` (001–011). No hay SQL ad-hoc de producción.
 
-Cuando se implemente, versionar por ejemplo:
+## Tablas
 
-1. `001_initial_schema.sql`
-2. `002_profiles.sql`
-3. `003_workspaces.sql`
-4. `004_memberships.sql`
-5. `005_documents.sql`
-6. `006_conversations.sql`
-7. `007_audit_logs.sql`
-8. `008_rls.sql`
+- `profiles` (id = `auth.users.id`)
+- `businesses` (`owner_id` unique)
+- `clients` (`business_id`)
+- `workspaces` (`business_id`, `client_id` unique)
+- `workspace_members` (`role` in `business|client`)
+- `invitations` (`token_hash`, nunca el token en claro)
+- `documents` (`workspace_id`, status de pipeline)
+- `document_chunks` (`workspace_id` NOT NULL, `embedding vector(1536)`)
+- `conversations`, `messages` (`workspace_id`), `message_sources`
+- `audit_logs`
 
-RLS siempre. Client A ve workspace A, no B. Documentos igual. Business según ownership y permisos del backend.
+## Retrieval
 
-Actualizar este archivo y `docs/changelog.md` en cada migration.
+`match_document_chunks(p_workspace_id, p_query, p_limit)` filtra **siempre** por `workspace_id` en el mismo `SELECT`. No hay búsqueda vectorial global.
+
+## RLS
+
+Activado en todas las tablas de tenant. Lecturas de membresía vía helpers `security definer` para evitar recursión. Client José no ve filas del workspace María.
+
+El backend usa el JWT del usuario (anon) para operaciones de tenant. `service_role` solo admin/seed/audit/invite preview.

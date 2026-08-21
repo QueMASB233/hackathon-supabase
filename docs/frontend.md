@@ -38,7 +38,7 @@ UI (Zustand): sidebar, boot, composer, toasts.
 
 ## Mocks
 
-`VITE_API_MODE=mock` (default). Implementación únicamente en `src/api/adapters/mock/`. Documentado como deuda TD-001: los mocks no deben sobrevivir como fuente de verdad.
+`VITE_API_MODE=mock` (default) o `http` contra el backend Hono. Implementación mock únicamente en `src/api/adapters/mock/` (TD-001).
 
 ## Optimistic UI
 

@@ -1,0 +1,13 @@
+models:
+  - type: main
+    engine: openai
+    model: gpt-4o-mini
+
+rails:
+  input:
+    flows:
+      - jailbreak check
+      - workspace scope check
+  output:
+    flows:
+      - self check output

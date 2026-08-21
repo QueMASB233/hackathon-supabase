@@ -2,17 +2,22 @@
 
 Proyecto: `https://rdvmkdsthquvddgmzlqj.supabase.co`
 
-Regla: **todo SQL va en migrations**. Nunca SQL ad-hoc.
+Todo SQL está en `migrations/`, aplicado en orden:
 
-P0 no incluye schema. Cuando se cree, versionar aquí:
+1. `001_extensions.sql` — pgcrypto, vector
+2. `002_tenancy.sql` — profiles, businesses, clients
+3. `003_workspaces.sql` — workspaces, workspace_members
+4. `004_invitations.sql`
+5. `005_documents.sql` — documents, document_chunks (pgvector)
+6. `006_conversations.sql`
+7. `007_audit.sql`
+8. `008_functions.sql` — helpers RLS + `match_document_chunks(workspace_id, query)`
+9. `009_rls.sql`
+10. `010_storage.sql` — bucket privado `workspace-documents`
+11. `011_grants.sql`
 
-```
-migrations/
-  001_initial_schema.sql
-  ...
-  008_rls.sql
-```
+RLS está activado en todas las tablas sensibles. El frontend no aplica políticas.
 
-RLS es obligatorio. El frontend no implementa ni sustituye políticas.
+Auth: habilitar **Email OTP** (passwordless) en el dashboard. No hay passwords en el producto.
 
-`functions/` queda reservado para Edge Functions si el backend las necesita. El cliente PWA no las llama como atajo a la base de datos.
+Storage: bucket `workspace-documents`, `public = false`. Path: `workspaces/{workspace_id}/documents/{document_id}/file`.

@@ -1,11 +1,52 @@
 # Backend
 
-El frontend de SecureWorkspace **nunca** habla con PostgreSQL, Storage ni RLS.
+API HTTP de SecureWorkspace. El frontend nunca habla con Postgres ni Storage.
 
-Este directorio alojará la API (auth, autorización, RAG, OpenAI, NeMo Guardrails, rate limiting, auditoría).
+## Correr
 
-En P0 el backend **no está implementado**. El frontend usa `VITE_API_MODE=mock`.
+```bash
+cd backend
+cp .env.example .env   # rellenar secretos locales; no commitear
+npm install
+npm run dev            # http://localhost:8000
+```
 
-Cuando exista, el contrato esperado está en [`docs/api.md`](../docs/api.md).
+Sidecar NeMo (otro terminal):
 
-No colocar secretos en el repositorio. OpenAI, `service_role` y passwords viven solo en environment del servidor.
+```bash
+cd backend/guardrails
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app:app --port 8001
+```
+
+Migraciones (Supabase CLI o SQL editor, en orden):
+
+`supabase/migrations/001_*.sql` … `011_*.sql`
+
+```bash
+npm run seed
+```
+
+Frontend en modo real:
+
+`frontend/.env` → `VITE_API_MODE=http` y `VITE_API_BASE_URL=http://localhost:8000`
+
+## Secretos
+
+Solo en `backend/.env`:
+
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `OPENAI_API_KEY`
+
+Nunca en frontend, git, logs ni README.
+
+## Roles de cliente Supabase
+
+- JWT del usuario + anon: lecturas/escrituras de tenant (RLS).
+- service_role: OTP/admin, seed, auditoría, preview de invitaciones por hash.
+
+## Health
+
+`GET /health`
