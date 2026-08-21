@@ -42,7 +42,17 @@ export function createApp(deps: AppDeps) {
         err.status as 400,
       )
     }
-    deps.logger.error({ err: err instanceof Error ? err.message : 'unknown', requestId: requestIdValue })
+    // Postgres and Supabase errors are plain objects, so an instanceof check
+    // alone would log "unknown" and hide the only useful detail.
+    const detail = err as Partial<Record<'message' | 'code' | 'details' | 'hint', unknown>>
+    deps.logger.error({
+      requestId: requestIdValue,
+      path: c.req.path,
+      err: detail?.message ?? 'unknown',
+      pgCode: detail?.code,
+      pgDetails: detail?.details,
+      pgHint: detail?.hint,
+    })
     return c.json(
       { code: 'SERVER', message: ERROR_MESSAGE.SERVER, requestId: requestIdValue },
       500,

@@ -69,12 +69,22 @@ export function aiRoutes(deps: AppDeps) {
 
       if (!deps.openai.enabled()) throw serverError('OpenAI no está configurado.')
 
-      const chunks = await retrieveChunks({
-        userClient,
-        openai: deps.openai,
-        workspaceId,
-        query: content,
-      })
+      let chunks
+      try {
+        chunks = await retrieveChunks({
+          userClient,
+          openai: deps.openai,
+          workspaceId,
+          query: content,
+        })
+      } catch (error) {
+        const detail = error as Partial<Record<'message' | 'code' | 'hint', unknown>>
+        c.get('logger')?.error(
+          { err: detail?.message, pgCode: detail?.code, pgHint: detail?.hint },
+          'chunk retrieval failed',
+        )
+        throw serverError('No pudimos recuperar los documentos de este workspace.')
+      }
       const context =
         chunks
           .map(
