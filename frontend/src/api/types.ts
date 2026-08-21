@@ -144,16 +144,17 @@ export type AiChunk =
   | { type: 'sources'; sources: SourceRef[] }
   | { type: 'done'; message: ChatMessage }
 
+export type MagicLinkSent = {
+  email: string
+  /** Only the mock adapter returns this, so the demo works without email delivery. */
+  devLink?: string
+}
+
 export type AuthApi = {
-  requestCode: (input: { email: string }) => Promise<{ email: string }>
-  signupBusiness: (input: { email: string; organizationName: string }) => Promise<{ email: string }>
-  resendCode: (input: { email: string }) => Promise<{ email: string; retryAfterSec: number }>
-  verifyCode: (input: {
-    email: string
-    code: string
-    intent?: 'business_signup'
-    organizationName?: string
-  }) => Promise<Session>
+  requestLink: (input: { email: string }) => Promise<MagicLinkSent>
+  signupBusiness: (input: { email: string; organizationName: string }) => Promise<MagicLinkSent>
+  resendLink: (input: { email: string }) => Promise<MagicLinkSent & { retryAfterSec: number }>
+  completeSession: (input: { token: string }) => Promise<Session>
   logout: () => Promise<void>
   previewInvite: (token: string) => Promise<InvitePreview>
   acceptInvite: (input: { token: string; email: string }) => Promise<{ email: string }>

@@ -29,7 +29,7 @@ Ver [`backend/README.md`](backend/README.md). Secretos solo en `backend/.env`.
 
 ## Demo passwordless
 
-El login es correo + código OTP de 6 dígitos (Supabase Auth). No hay contraseñas.
+El login es correo + magic link (Supabase Auth). No hay contraseñas ni códigos. El enlace vuelve a `{APP_URL}/auth/callback`, que debe estar en Supabase > Auth > URL Configuration > Redirect URLs.
 
 Tras `npm run seed` en backend: `mathias@mathias.sa` (business) y `jose@email.com` (client). José no puede abrir el workspace de María (`403` + RLS).
 

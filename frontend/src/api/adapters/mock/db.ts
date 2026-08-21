@@ -10,9 +10,8 @@ import type {
   WorkspaceDocument,
 } from '../../types'
 
-export const MOCK_CODE = '123456'
-export const MOCK_INVALID = '000000'
-export const MOCK_EXPIRED = '999999'
+/** Paste this into /auth/callback to see the expired-link screen. */
+export const MOCK_EXPIRED_TOKEN = 'mock-link-expired'
 
 export const BUSINESS_PERMS: Permission[] = [
   'clients.create',
@@ -313,9 +312,14 @@ export const documentFiles: Record<string, string> = {
   'doc-maria-budget': 'Presupuesto regional María S.A. — no visible para José.',
 }
 
-export type IssuedCode = { email: string; issuedAt: number; organizationName?: string }
+export type IssuedLink = {
+  token: string
+  email: string
+  issuedAt: number
+  organizationName?: string
+}
 
-export const issuedCodes: IssuedCode[] = []
+export const issuedLinks: IssuedLink[] = []
 export const rateBucket: Record<string, number[]> = {}
 
 export let sessionEmail: string | null = null

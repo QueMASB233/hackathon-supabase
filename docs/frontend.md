@@ -58,7 +58,7 @@ Boot global solo en cold start autenticado. Listas: skeletons. Chat: burbuja str
 
 ## Auth UI
 
-`/login` correo → `/verify` código. `/invite/:token` confirma correo y sigue al código. Sin password.
+`/login` correo → `/check-email` → el enlace del correo abre `/auth/callback`, que canjea el token y redirige al `homePath`. `/signup` registra una empresa con el mismo flujo. `/invite/:token` confirma el correo y pide el enlace. Sin password.
 
 ## Definition of done (P0)
 

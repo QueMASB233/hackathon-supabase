@@ -22,15 +22,15 @@ High
 
 ### Problema
 
-OTP real depende de Email OTP + SMTP/Inbucket en el proyecto Supabase.
+El magic link depende de SMTP/Inbucket en el proyecto Supabase.
 
 ### Impacto
 
-Sin proveedor de correo no llega el código de 6 dígitos.
+Sin proveedor de correo no llega el enlace de acceso. El SMTP por defecto de Supabase limita a pocos correos por hora.
 
 ### Solución futura
 
-Configurar Auth > Providers > Email OTP en el dashboard.
+Configurar Auth > Providers > Email y un SMTP propio, y registrar `{APP_URL}/auth/callback` en Redirect URLs.
 
 ### Prioridad
 

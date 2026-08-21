@@ -1,8 +1,16 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AppDeps, HonoEnv } from '../../types.ts'
 import { clientKey, rateLimit } from '../../middleware/rateLimit.ts'
-import { codeExpired, codeInvalid, conflict, invitePending, notFound, validation } from '../../lib/errors.ts'
+import {
+  codeExpired,
+  conflict,
+  invitePending,
+  notFound,
+  unauthorized,
+  validation,
+} from '../../lib/errors.ts'
 import { writeAudit } from '../../services/audit.ts'
 import { type WorkspaceRole } from '../../lib/permissions.ts'
 
@@ -11,45 +19,140 @@ const SignupBody = z.object({
   email: z.string().email(),
   organizationName: z.string().trim().min(2).max(120),
 })
-const VerifyBody = z.object({
-  email: z.string().email(),
-  code: z.string().regex(/^\d{6}$/),
-  intent: z.enum(['business_signup']).optional(),
-  organizationName: z.string().trim().min(2).max(120).optional(),
-})
+const SessionBody = z.object({ token: z.string().min(16) })
+
+function callbackUrl(deps: AppDeps) {
+  const base = (deps.env.APP_URL ?? deps.env.CORS_ORIGIN).replace(/\/$/, '')
+  return `${base}/auth/callback`
+}
+
+async function sendMagicLink(
+  deps: AppDeps,
+  input: { email: string; createUser: boolean; organizationName?: string },
+) {
+  const { error } = await deps.anon.auth.signInWithOtp({
+    email: input.email,
+    options: {
+      shouldCreateUser: input.createUser,
+      emailRedirectTo: callbackUrl(deps),
+      ...(input.organizationName ? { data: { organization_name: input.organizationName } } : {}),
+    },
+  })
+  if (error) {
+    if (error.message.toLowerCase().includes('rate')) throw codeExpired()
+    throw validation(error.message)
+  }
+}
+
+async function findProfile(admin: SupabaseClient, email: string) {
+  const { data } = await admin.from('profiles').select('id, display_name').eq('email', email).maybeSingle()
+  return data
+}
+
+async function findLatestInvite(admin: SupabaseClient, email: string) {
+  const { data } = await admin
+    .from('invitations')
+    .select('id, status')
+    .eq('email', email)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  return data
+}
+
+// Runs after Supabase verified the magic link. The role is derived here,
+// never taken from the request body.
+async function provisionUser(
+  deps: AppDeps,
+  user: { id: string; email: string; organizationName?: string },
+) {
+  const admin = deps.admin
+  const { data: prior } = await admin
+    .from('profiles')
+    .select('id, display_name')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  const fallbackName = user.email.split('@')[0] || user.email
+  const displayName = prior?.display_name || user.organizationName || fallbackName
+  await admin.from('profiles').upsert({
+    id: user.id,
+    email: user.email,
+    display_name: displayName,
+  })
+
+  const { data: accepted } = await admin
+    .from('invitations')
+    .select('workspace_id, client_id')
+    .eq('email', user.email)
+    .eq('status', 'accepted')
+    .maybeSingle()
+
+  if (accepted) {
+    await admin.from('workspace_members').upsert({
+      workspace_id: accepted.workspace_id,
+      user_id: user.id,
+      role: 'client' satisfies WorkspaceRole,
+    })
+    const { data: client } = await admin
+      .from('clients')
+      .select('name')
+      .eq('id', accepted.client_id)
+      .maybeSingle()
+    if (client?.name) {
+      await admin.from('profiles').update({ display_name: client.name }).eq('id', user.id)
+    }
+    return
+  }
+
+  const { data: clientMember } = await admin
+    .from('workspace_members')
+    .select('role')
+    .eq('user_id', user.id)
+    .eq('role', 'client')
+    .maybeSingle()
+  if (clientMember) return
+
+  const { data: existingBusiness } = await admin
+    .from('businesses')
+    .select('id')
+    .eq('owner_id', user.id)
+    .maybeSingle()
+  if (existingBusiness) return
+
+  const name = user.organizationName || displayName
+  await admin.from('profiles').update({ display_name: name }).eq('id', user.id)
+  const { error } = await admin.from('businesses').insert({ name, owner_id: user.id })
+  if (error && !error.message.toLowerCase().includes('duplicate')) throw validation()
+  await writeAudit(admin, {
+    actorUserId: user.id,
+    action: 'BUSINESS_CREATED',
+    resourceType: 'business',
+    resourceId: user.id,
+    metadata: { email: user.email },
+  })
+}
 
 export function authRoutes(deps: AppDeps) {
   const r = new Hono<HonoEnv>()
 
   r.post(
-    '/request-code',
-    rateLimit({ max: 8, windowMs: 60_000, key: (c) => clientKey(c, 'request-code') }),
+    '/request-link',
+    rateLimit({ max: 8, windowMs: 60_000, key: (c) => clientKey(c, 'request-link') }),
     async (c) => {
       const parsed = EmailBody.safeParse(await c.req.json())
       if (!parsed.success) throw validation()
       const email = parsed.data.email.trim().toLowerCase()
 
-      const { data: profile } = await deps.admin.from('profiles').select('id').eq('email', email).maybeSingle()
-      const { data: invite } = await deps.admin
-        .from('invitations')
-        .select('id, status')
-        .eq('email', email)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
+      const profile = await findProfile(deps.admin, email)
+      const invite = await findLatestInvite(deps.admin, email)
 
       if (!profile && invite?.status === 'pending') throw invitePending()
-      if (!profile && invite?.status !== 'accepted') throw notFound('No encontramos una cuenta con este correo.')
-
-      const { error } = await deps.anon.auth.signInWithOtp({
-        email,
-        options: { shouldCreateUser: !profile },
-      })
-      if (error) {
-        const msg = error.message.toLowerCase()
-        if (msg.includes('rate')) throw codeExpired()
-        throw validation(error.message)
+      if (!profile && invite?.status !== 'accepted') {
+        throw notFound('No encontramos una cuenta con este correo.')
       }
+
+      await sendMagicLink(deps, { email, createUser: !profile })
       return c.json({ email })
     },
   )
@@ -61,139 +164,60 @@ export function authRoutes(deps: AppDeps) {
       const parsed = SignupBody.safeParse(await c.req.json())
       if (!parsed.success) throw validation()
       const email = parsed.data.email.trim().toLowerCase()
+      const organizationName = parsed.data.organizationName.trim()
 
-      const { data: profile } = await deps.admin.from('profiles').select('id').eq('email', email).maybeSingle()
-      if (profile) throw conflict()
-
-      const { data: invite } = await deps.admin
-        .from('invitations')
-        .select('id, status')
-        .eq('email', email)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
+      if (await findProfile(deps.admin, email)) throw conflict()
+      const invite = await findLatestInvite(deps.admin, email)
       if (invite?.status === 'pending') throw invitePending()
       if (invite?.status === 'accepted') throw conflict()
 
-      const { error } = await deps.anon.auth.signInWithOtp({
-        email,
-        options: { shouldCreateUser: true },
-      })
-      if (error) {
-        const msg = error.message.toLowerCase()
-        if (msg.includes('rate')) throw codeExpired()
-        throw validation(error.message)
-      }
+      await sendMagicLink(deps, { email, createUser: true, organizationName })
       return c.json({ email })
     },
   )
 
   r.post(
-    '/resend-code',
-    rateLimit({ max: 5, windowMs: 60_000, key: (c) => clientKey(c, 'resend-code') }),
+    '/resend-link',
+    rateLimit({ max: 5, windowMs: 60_000, key: (c) => clientKey(c, 'resend-link') }),
     async (c) => {
       const parsed = EmailBody.safeParse(await c.req.json())
       if (!parsed.success) throw validation()
       const email = parsed.data.email.trim().toLowerCase()
-      const { data: profile } = await deps.admin.from('profiles').select('id').eq('email', email).maybeSingle()
-      const { error } = await deps.anon.auth.signInWithOtp({
-        email,
-        options: { shouldCreateUser: !profile },
-      })
-      if (error) throw validation()
+      const profile = await findProfile(deps.admin, email)
+      await sendMagicLink(deps, { email, createUser: !profile })
       return c.json({ email, retryAfterSec: 30 })
     },
   )
 
   r.post(
-    '/verify',
-    rateLimit({ max: 8, windowMs: 60_000, key: (c) => clientKey(c, 'verify') }),
+    '/session',
+    rateLimit({ max: 20, windowMs: 60_000, key: (c) => clientKey(c, 'session') }),
     async (c) => {
-      const parsed = VerifyBody.safeParse(await c.req.json())
+      const parsed = SessionBody.safeParse(await c.req.json())
       if (!parsed.success) throw validation()
-      const email = parsed.data.email.trim().toLowerCase()
-      const { data, error } = await deps.anon.auth.verifyOtp({
-        email,
-        token: parsed.data.code,
-        type: 'email',
+      const token = parsed.data.token.trim()
+
+      const { data, error } = await deps.admin.auth.getUser(token)
+      if (error || !data.user?.id || !data.user.email) throw unauthorized()
+
+      const metadata = data.user.user_metadata as { organization_name?: unknown } | null
+      const organizationName =
+        typeof metadata?.organization_name === 'string' ? metadata.organization_name.trim() : undefined
+
+      await provisionUser(deps, {
+        id: data.user.id,
+        email: data.user.email.toLowerCase(),
+        organizationName: organizationName || undefined,
       })
-      if (error || !data.session?.access_token || !data.user) {
-        const msg = (error?.message ?? '').toLowerCase()
-        if (msg.includes('expired')) throw codeExpired()
-        throw codeInvalid()
-      }
-
-      const userId = data.user.id
-      const orgName = parsed.data.organizationName?.trim()
-      const { data: prior } = await deps.admin.from('profiles').select('id, display_name').eq('id', userId).maybeSingle()
-      const displayName = orgName || prior?.display_name || email.split('@')[0] || email
-      await deps.admin.from('profiles').upsert({
-        id: userId,
-        email,
-        display_name: displayName,
-      })
-
-      const { data: accepted } = await deps.admin
-        .from('invitations')
-        .select('workspace_id, client_id')
-        .eq('email', email)
-        .eq('status', 'accepted')
-        .maybeSingle()
-
-      if (accepted) {
-        await deps.admin.from('workspace_members').upsert({
-          workspace_id: accepted.workspace_id,
-          user_id: userId,
-          role: 'client' satisfies WorkspaceRole,
-        })
-        const { data: client } = await deps.admin
-          .from('clients')
-          .select('name')
-          .eq('id', accepted.client_id)
-          .maybeSingle()
-        if (client?.name) {
-          await deps.admin.from('profiles').update({ display_name: client.name }).eq('id', userId)
-        }
-      } else if (!prior || parsed.data.intent === 'business_signup') {
-        const { data: clientMember } = await deps.admin
-          .from('workspace_members')
-          .select('role')
-          .eq('user_id', userId)
-          .eq('role', 'client')
-          .maybeSingle()
-        const { data: existingBiz } = await deps.admin
-          .from('businesses')
-          .select('id')
-          .eq('owner_id', userId)
-          .maybeSingle()
-        if (!clientMember && !existingBiz) {
-          const name = orgName || displayName
-          await deps.admin.from('profiles').update({ display_name: name }).eq('id', userId)
-          const { error: bizError } = await deps.admin.from('businesses').insert({
-            name,
-            owner_id: userId,
-          })
-          if (bizError && !bizError.message.toLowerCase().includes('duplicate')) {
-            throw validation()
-          }
-          await writeAudit(deps.admin, {
-            actorUserId: userId,
-            action: 'BUSINESS_CREATED',
-            resourceType: 'business',
-            resourceId: userId,
-            metadata: { email },
-          })
-        }
-      }
 
       await writeAudit(deps.admin, {
-        actorUserId: userId,
+        actorUserId: data.user.id,
         action: 'LOGIN',
         resourceType: 'session',
-        resourceId: userId,
+        resourceId: data.user.id,
       })
 
-      return c.json({ token: data.session.access_token })
+      return c.json({ token })
     },
   )
 

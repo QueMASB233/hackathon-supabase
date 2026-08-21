@@ -10,6 +10,7 @@ const EnvSchema = z.object({
   GUARDRAILS_URL: z.string().url().default('http://127.0.0.1:8001'),
   PORT: z.coerce.number().default(8000),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
+  APP_URL: z.string().url().optional(),
   LOG_LEVEL: z.string().default('info'),
 })
 

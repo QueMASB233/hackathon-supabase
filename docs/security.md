@@ -6,7 +6,7 @@ El frontend no es la seguridad.
 
 ## Auth
 
-Passwordless: Supabase Email OTP. El backend valida el JWT con `auth.getUser`. El body no puede enviar `role`.
+Passwordless: Supabase magic link. Supabase verifica el enlace y el backend revalida el JWT con `auth.getUser` antes de aprovisionar la cuenta. El body no puede enviar `role`. El `access_token` llega en el fragmento de la URL y el PWA lo borra del historial con `replaceState` apenas lo consume.
 
 ## Autorización
 
@@ -20,7 +20,7 @@ Bucket privado `workspace-documents`. Business: insert/update/delete. Member: se
 
 ## Rate limit
 
-In-memory por IP+ruta en: request-code, resend, verify, accept invite, upload, AI. `429 RATE_LIMITED`.
+In-memory por IP+ruta en: request-link, signup-business, resend-link, session, accept invite, upload, AI. `429 RATE_LIMITED`.
 
 ## Audit
 

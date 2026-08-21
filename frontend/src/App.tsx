@@ -5,7 +5,8 @@ import { RequireSession } from './layouts/RequireSession'
 import { WorkspaceLayout } from './layouts/WorkspaceLayout'
 import { LoginPage } from './pages/LoginPage'
 import { SignupPage } from './pages/SignupPage'
-import { VerifyPage } from './pages/VerifyPage'
+import { CheckEmailPage } from './pages/CheckEmailPage'
+import { AuthCallbackPage } from './pages/AuthCallbackPage'
 import { InvitePage } from './pages/InvitePage'
 import { HomeRedirect } from './pages/HomeRedirect'
 import { DashboardPage } from './pages/DashboardPage'
@@ -24,7 +25,8 @@ export default function App() {
         <Route element={<AuthLayout />}>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
-          <Route path="/verify" element={<VerifyPage />} />
+          <Route path="/check-email" element={<CheckEmailPage />} />
+          <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/invite/:token" element={<InvitePage />} />
         </Route>
         <Route element={<RequireSession />}>

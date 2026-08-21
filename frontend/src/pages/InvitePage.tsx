@@ -41,8 +41,11 @@ export function InvitePage() {
     setLoading(true)
     setError(null)
     try {
-      const result = await api.auth.acceptInvite({ token, email: email || preview.email })
-      navigate('/verify', { state: { email: result.email } })
+      const accepted = await api.auth.acceptInvite({ token, email: email || preview.email })
+      const link = await api.auth.requestLink({ email: accepted.email })
+      navigate('/check-email', {
+        state: { email: link.email, devLink: link.devLink, origin: 'invite' },
+      })
     } catch (err) {
       setError(isApiError(err) ? err.code : 'SERVER')
     } finally {
@@ -72,7 +75,7 @@ export function InvitePage() {
         </p>
       ) : null}
       <Button type="submit" disabled={loading}>
-        {loading ? 'Confirmando…' : 'Continuar con el código'}
+        {loading ? 'Confirmando…' : 'Enviarme el enlace de acceso'}
       </Button>
     </form>
   )

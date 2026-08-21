@@ -39,8 +39,8 @@ export const ERROR_MESSAGE: Record<ApiErrorCode, string> = {
   OUT_OF_SCOPE: 'Esta solicitud está fuera del alcance de este workspace.',
   PROMPT_BLOCKED: 'Esta solicitud no puede procesarse dentro de este workspace.',
   INVITE_PENDING: 'Tu invitación está pendiente.',
-  CODE_INVALID: 'Código inválido.',
-  CODE_EXPIRED: 'Código expirado.',
+  CODE_INVALID: 'El enlace no es válido.',
+  CODE_EXPIRED: 'El enlace expiró.',
 }
 
 export function unauthorized(message = ERROR_MESSAGE.UNAUTHORIZED) {

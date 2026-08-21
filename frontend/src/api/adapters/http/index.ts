@@ -1,6 +1,6 @@
 import { apiFetch } from '../../client'
 import type { Api, AiChunk } from '../../types'
-import { getSessionToken } from '../../session'
+import { clearSessionToken, getSessionToken, setSessionToken } from '../../session'
 
 async function* streamQuery(input: {
   workspaceId: string
@@ -39,12 +39,25 @@ async function* streamQuery(input: {
 
 export const httpApi: Api = {
   auth: {
-    requestCode: (input) => apiFetch('/api/auth/request-code', { method: 'POST', body: JSON.stringify(input) }),
+    requestLink: (input) => apiFetch('/api/auth/request-link', { method: 'POST', body: JSON.stringify(input) }),
     signupBusiness: (input) =>
       apiFetch('/api/auth/signup-business', { method: 'POST', body: JSON.stringify(input) }),
-    resendCode: (input) => apiFetch('/api/auth/resend-code', { method: 'POST', body: JSON.stringify(input) }),
-    verifyCode: (input) => apiFetch('/api/auth/verify', { method: 'POST', body: JSON.stringify(input) }),
-    logout: () => apiFetch('/api/auth/logout', { method: 'POST' }),
+    resendLink: (input) => apiFetch('/api/auth/resend-link', { method: 'POST', body: JSON.stringify(input) }),
+    completeSession: async (input) => {
+      const session = await apiFetch<{ token: string }>('/api/auth/session', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      })
+      setSessionToken(session.token)
+      return session
+    },
+    logout: async () => {
+      try {
+        await apiFetch('/api/auth/logout', { method: 'POST' })
+      } finally {
+        clearSessionToken()
+      }
+    },
     previewInvite: (token) => apiFetch(`/api/invites/${token}`),
     acceptInvite: (input) =>
       apiFetch(`/api/invites/${input.token}/accept`, { method: 'POST', body: JSON.stringify({ email: input.email }) }),

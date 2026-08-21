@@ -26,11 +26,12 @@ export function SignupPage() {
         email,
         organizationName: organizationName.trim(),
       })
-      navigate('/verify', {
+      navigate('/check-email', {
         state: {
           email: result.email,
-          intent: 'business_signup' as const,
+          devLink: result.devLink,
           organizationName: organizationName.trim(),
+          origin: 'signup',
         },
       })
     } catch (err) {
@@ -48,7 +49,7 @@ export function SignupPage() {
         <p className="font-mono text-[11px] tracking-[0.2em] text-brass uppercase">Empresa</p>
         <h2 className="mt-2 font-display text-4xl tracking-display">Crea tu espacio</h2>
         <p className="mt-2 text-ink/65">
-          Registro para agencias. Te enviamos un código de 6 dígitos. Sin contraseñas.
+          Registro para agencias. Te enviamos un enlace de acceso. Sin contraseñas.
         </p>
       </div>
       <Input
@@ -75,7 +76,7 @@ export function SignupPage() {
         </p>
       ) : null}
       <Button type="submit" disabled={loading}>
-        {loading ? 'Enviando código…' : 'Enviar código'}
+        {loading ? 'Enviando enlace…' : 'Enviar enlace de acceso'}
       </Button>
       <p className="text-sm text-ink/50">
         ¿Ya tienes cuenta?{' '}

@@ -11,11 +11,9 @@ import {
   conversations,
   documentFiles,
   documents,
-  issuedCodes,
+  issuedLinks,
   messages,
-  MOCK_CODE,
-  MOCK_EXPIRED,
-  MOCK_INVALID,
+  MOCK_EXPIRED_TOKEN,
   pendingInvites,
   rateBucket,
   sessionEmail,
@@ -74,6 +72,12 @@ function normalizeEmail(email: string) {
   return email.trim().toLowerCase()
 }
 
+function issueLink(email: string, organizationName?: string) {
+  const token = `mock-link-${Math.random().toString(36).slice(2, 10)}`
+  issuedLinks.unshift({ token, email, issuedAt: Date.now(), organizationName })
+  return `/auth/callback#access_token=${token}&type=magiclink`
+}
+
 function clientWorkspaceCaps(id: string): Permission[] {
   return (
     workspaces[id]?.capabilities.filter((p) =>
@@ -84,18 +88,17 @@ function clientWorkspaceCaps(id: string): Permission[] {
 
 export const mockApi: Api = {
   auth: {
-    async requestCode({ email }) {
+    async requestLink({ email }) {
       await sleep(380)
       const normalized = normalizeEmail(email)
-      hitRate(`code:${normalized}`, 8)
+      hitRate(`link:${normalized}`, 8)
       if (normalized === 'contacto@jose.com') {
         throw new ApiError('INVITE_PENDING', 403, 'Tu invitación está pendiente.')
       }
       if (!users[normalized]) {
         throw new ApiError('NOT_FOUND', 404, 'No encontramos una cuenta con este correo.')
       }
-      issuedCodes.push({ email: normalized, issuedAt: Date.now() })
-      return { email: normalized }
+      return { email: normalized, devLink: issueLink(normalized) }
     },
     async signupBusiness({ email, organizationName }) {
       await sleep(380)
@@ -110,34 +113,31 @@ export const mockApi: Api = {
       if (users[normalized]) {
         throw new ApiError('CONFLICT', 409, 'Ya hay una cuenta con este correo.')
       }
-      issuedCodes.push({ email: normalized, issuedAt: Date.now(), organizationName: organizationName.trim() })
-      return { email: normalized }
+      return { email: normalized, devLink: issueLink(normalized, organizationName.trim()) }
     },
-    async resendCode({ email }) {
+    async resendLink({ email }) {
       await sleep(280)
       const normalized = normalizeEmail(email)
       hitRate(`resend:${normalized}`, 5)
-      issuedCodes.push({ email: normalized, issuedAt: Date.now() })
-      return { email: normalized, retryAfterSec: 30 }
+      const previous = issuedLinks.find((item) => item.email === normalized)
+      return {
+        email: normalized,
+        devLink: issueLink(normalized, previous?.organizationName),
+        retryAfterSec: 30,
+      }
     },
-    async verifyCode({ email, code, intent, organizationName }) {
-      await sleep(420)
-      const normalized = normalizeEmail(email)
-      hitRate(`verify:${normalized}`, 8)
-      if (code === MOCK_INVALID) {
-        throw new ApiError('CODE_INVALID', 422, 'Código inválido.')
+    async completeSession({ token }) {
+      await sleep(320)
+      if (token === MOCK_EXPIRED_TOKEN) {
+        throw new ApiError('CODE_EXPIRED', 422, 'El enlace expiró.')
       }
-      if (code === MOCK_EXPIRED) {
-        throw new ApiError('CODE_EXPIRED', 422, 'Código expirado.')
+      const issued = issuedLinks.find((item) => item.token === token)
+      if (!issued) {
+        throw new ApiError('CODE_INVALID', 422, 'El enlace no es válido.')
       }
-      if (code !== MOCK_CODE) {
-        throw new ApiError('CODE_INVALID', 422, 'Código inválido.')
-      }
+      const normalized = issued.email
       if (!users[normalized]) {
-        if (intent !== 'business_signup') {
-          throw new ApiError('NOT_FOUND', 404, 'No encontramos una cuenta con este correo.')
-        }
-        const org = organizationName?.trim() || issuedCodes.find((item) => item.email === normalized)?.organizationName || normalized
+        const org = issued.organizationName || normalized
         users[normalized] = {
           id: `user-${normalized}`,
           email: normalized,
@@ -148,10 +148,10 @@ export const mockApi: Api = {
           kind: 'business',
         }
       }
-      const token = `mock.${normalized}`
-      setSessionToken(token)
+      const sessionToken = `mock.${normalized}`
+      setSessionToken(sessionToken)
       setSessionEmail(normalized)
-      return { token }
+      return { token: sessionToken }
     },
     async logout() {
       await sleep(120)
@@ -182,7 +182,6 @@ export const mockApi: Api = {
         workspaceId: 'ws-jose',
       }
       invite.status = 'accepted'
-      issuedCodes.push({ email: invite.email, issuedAt: Date.now() })
       return { email: invite.email }
     },
   },

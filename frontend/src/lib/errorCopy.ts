@@ -3,7 +3,7 @@ import type { ApiErrorCode } from '../api/types'
 export const ERROR_COPY: Record<ApiErrorCode, { title: string; body: string }> = {
   UNAUTHORIZED: {
     title: 'Tu sesión expiró.',
-    body: 'Vuelve a verificar tu correo para continuar.',
+    body: 'Pide un enlace de acceso nuevo para continuar.',
   },
   FORBIDDEN: {
     title: 'No tienes acceso a este recurso.',
@@ -50,12 +50,12 @@ export const ERROR_COPY: Record<ApiErrorCode, { title: string; body: string }> =
     body: 'Abre el enlace que te envió tu empresa para continuar.',
   },
   CODE_INVALID: {
-    title: 'Código inválido.',
-    body: 'Revisa el código de 6 dígitos e inténtalo otra vez.',
+    title: 'Este enlace no es válido.',
+    body: 'Puede que ya se haya usado. Pide uno nuevo desde el inicio de sesión.',
   },
   CODE_EXPIRED: {
-    title: 'Código expirado.',
-    body: 'Solicita un código nuevo para continuar.',
+    title: 'El enlace expiró.',
+    body: 'Los enlaces duran unos minutos. Solicita uno nuevo para continuar.',
   },
 }
 

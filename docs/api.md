@@ -14,17 +14,23 @@ Códigos: `UNAUTHORIZED | FORBIDDEN | NOT_FOUND | CONFLICT | VALIDATION | RATE_L
 
 ## Auth
 
-- `POST /api/auth/request-code` `{ email }` → `{ email }` (cuentas existentes)
-- `POST /api/auth/signup-business` `{ email, organizationName }` → `{ email }` (agencia nueva; OTP)
-- `POST /api/auth/resend-code` `{ email }` → `{ email, retryAfterSec }`
-- `POST /api/auth/verify` `{ email, code, intent?, organizationName? }` → `{ token }` (JWT de Supabase)
+Passwordless por **magic link**. No hay códigos ni contraseñas.
+
+- `POST /api/auth/request-link` `{ email }` → `{ email }` (cuentas existentes)
+- `POST /api/auth/signup-business` `{ email, organizationName }` → `{ email }` (agencia nueva)
+- `POST /api/auth/resend-link` `{ email }` → `{ email, retryAfterSec }`
+- `POST /api/auth/session` `{ token }` → `{ token }` (JWT de Supabase, ya verificado)
 - `POST /api/auth/logout` → 204
 - `GET /api/invites/:token` → preview (lookup por hash; sin sesión)
 - `POST /api/invites/:token/accept` `{ email }` → `{ email }`
 
-`request-code` solo para emails en `profiles` o invitaciones `accepted`. Invitación `pending` → `INVITE_PENDING`.
+Flujo: el backend pide el enlace a Supabase con `emailRedirectTo = {APP_URL}/auth/callback`. Supabase verifica el enlace y devuelve el `access_token` en el fragmento de la URL. El PWA lo envía a `POST /api/auth/session`, que revalida el JWT con `auth.getUser` y recién ahí aprovisiona `profiles`, membresías y `businesses`.
 
-`signup-business` rechaza si el correo ya tiene profile (`CONFLICT`) o invitación pendiente. Tras `verify` con `intent: "business_signup"` el backend crea `profiles` + `businesses`; el rol no viaja en el body.
+`request-link` solo para emails en `profiles` o invitaciones `accepted`. Invitación `pending` → `INVITE_PENDING`.
+
+`signup-business` rechaza si el correo ya tiene profile (`CONFLICT`) o invitación pendiente. El `organizationName` viaja como `user_metadata.organization_name` de Supabase, así el registro sobrevive si el usuario abre el enlace en otro dispositivo. El rol nunca viaja en el body: lo deriva el backend en `session`.
+
+Enlace inválido o ya usado → `CODE_INVALID`; enlace vencido → `CODE_EXPIRED`.
 
 ## Sesión
 

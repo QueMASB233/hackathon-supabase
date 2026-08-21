@@ -5,7 +5,8 @@
 ### Added
 
 - Backend Hono (TypeScript) en `backend/` con el contrato HTTP del PWA.
-- Auth passwordless vía Supabase Email OTP.
+- Auth passwordless vía Supabase magic link, con callback en `/auth/callback`.
+- Registro de empresas (`POST /api/auth/signup-business`) y pantalla `/signup` enlazada desde el login.
 - Migrations 001–011: tenancy, invitaciones, documentos, pgvector, RLS, Storage privado.
 - Pipeline de documentos (extract → chunk → embed → indexing/ready).
 - RAG acotado por `workspace_id`, streaming NDJSON y sources reales.

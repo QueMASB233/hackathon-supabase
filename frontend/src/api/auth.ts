@@ -1,9 +1,9 @@
 import { api } from './index'
 
-export const requestCode = api.auth.requestCode
+export const requestLink = api.auth.requestLink
 export const signupBusiness = api.auth.signupBusiness
-export const resendCode = api.auth.resendCode
-export const verifyCode = api.auth.verifyCode
+export const resendLink = api.auth.resendLink
+export const completeSession = api.auth.completeSession
 export const logout = api.auth.logout
 export const previewInvite = api.auth.previewInvite
 export const acceptInvite = api.auth.acceptInvite

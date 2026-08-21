@@ -2,14 +2,14 @@ import { getApi } from './runtime'
 
 export const api = {
   auth: {
-    requestCode: (input: Parameters<ReturnType<typeof getApi>['auth']['requestCode']>[0]) =>
-      getApi().auth.requestCode(input),
+    requestLink: (input: Parameters<ReturnType<typeof getApi>['auth']['requestLink']>[0]) =>
+      getApi().auth.requestLink(input),
     signupBusiness: (input: Parameters<ReturnType<typeof getApi>['auth']['signupBusiness']>[0]) =>
       getApi().auth.signupBusiness(input),
-    resendCode: (input: Parameters<ReturnType<typeof getApi>['auth']['resendCode']>[0]) =>
-      getApi().auth.resendCode(input),
-    verifyCode: (input: Parameters<ReturnType<typeof getApi>['auth']['verifyCode']>[0]) =>
-      getApi().auth.verifyCode(input),
+    resendLink: (input: Parameters<ReturnType<typeof getApi>['auth']['resendLink']>[0]) =>
+      getApi().auth.resendLink(input),
+    completeSession: (input: Parameters<ReturnType<typeof getApi>['auth']['completeSession']>[0]) =>
+      getApi().auth.completeSession(input),
     logout: () => getApi().auth.logout(),
     previewInvite: (token: string) => getApi().auth.previewInvite(token),
     acceptInvite: (input: Parameters<ReturnType<typeof getApi>['auth']['acceptInvite']>[0]) =>

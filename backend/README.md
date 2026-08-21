@@ -33,6 +33,8 @@ Frontend en modo real:
 
 `frontend/.env` → `VITE_API_MODE=http` y `VITE_API_BASE_URL=http://localhost:8000`
 
+Magic link: `APP_URL` (default `CORS_ORIGIN`) define el `emailRedirectTo`. Esa URL + `/auth/callback` debe estar en Supabase > Auth > URL Configuration > Redirect URLs.
+
 ## Secretos
 
 Solo en `backend/.env`:
@@ -45,7 +47,7 @@ Nunca en frontend, git, logs ni README.
 ## Roles de cliente Supabase
 
 - JWT del usuario + anon: lecturas/escrituras de tenant (RLS).
-- service_role: OTP/admin, seed, auditoría, preview de invitaciones por hash.
+- service_role: admin, seed, auditoría, preview de invitaciones por hash, validación del JWT del magic link.
 
 ## Health
 

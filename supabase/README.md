@@ -18,6 +18,6 @@ Todo SQL está en `migrations/`, aplicado en orden:
 
 RLS está activado en todas las tablas sensibles. El frontend no aplica políticas.
 
-Auth: habilitar **Email OTP** (passwordless) en el dashboard. No hay passwords en el producto.
+Auth: habilitar **Email** (passwordless, magic link) en el dashboard. No hay passwords en el producto. En Auth > URL Configuration agregar `{APP_URL}/auth/callback` a Redirect URLs (local: `http://localhost:5173/auth/callback`).
 
 Storage: bucket `workspace-documents`, `public = false`. Path: `workspaces/{workspace_id}/documents/{document_id}/file`.

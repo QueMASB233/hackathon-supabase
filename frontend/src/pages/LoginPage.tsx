@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { isApiError } from '../api/errors'
 import { Button } from '../components/ui/Button'
@@ -21,8 +21,10 @@ export function LoginPage() {
     setLoading(true)
     setError(null)
     try {
-      const result = await api.auth.requestCode({ email })
-      navigate('/verify', { state: { email: result.email } })
+      const result = await api.auth.requestLink({ email })
+      navigate('/check-email', {
+        state: { email: result.email, devLink: result.devLink, origin: 'login' },
+      })
     } catch (err) {
       setError(isApiError(err) ? err.code : 'SERVER')
     } finally {
@@ -37,7 +39,7 @@ export function LoginPage() {
       <div>
         <p className="font-mono text-[11px] tracking-[0.2em] text-brass uppercase">Acceso</p>
         <h2 className="mt-2 font-display text-4xl tracking-display">Ingresa tu correo</h2>
-        <p className="mt-2 text-ink/65">Te enviaremos un código de 6 dígitos. No usamos contraseñas.</p>
+        <p className="mt-2 text-ink/65">Te enviamos un enlace de acceso. No usamos contraseñas.</p>
       </div>
       <Input
         label="Correo"
@@ -54,14 +56,20 @@ export function LoginPage() {
         </p>
       ) : null}
       <Button type="submit" disabled={loading}>
-        {loading ? 'Enviando código…' : 'Enviar código'}
+        {loading ? 'Enviando enlace…' : 'Enviar enlace de acceso'}
+      </Button>
+
+      <div className="flex items-center gap-3 pt-1">
+        <span className="h-px flex-1 bg-mist" />
+        <span className="font-mono text-[11px] tracking-[0.18em] text-ink/40 uppercase">o</span>
+        <span className="h-px flex-1 bg-mist" />
+      </div>
+
+      <Button variant="sheet" onClick={() => navigate('/signup')}>
+        Registrar mi empresa
       </Button>
       <p className="text-sm text-ink/50">
-        ¿Eres una agencia?{' '}
-        <Link to="/signup" className="text-seal">
-          Crea tu espacio
-        </Link>
-        . ¿Tienes una invitación? Abre el enlace que te envió tu empresa.
+        ¿Tienes una invitación? Abre el enlace que te envió tu empresa.
       </p>
     </form>
   )
