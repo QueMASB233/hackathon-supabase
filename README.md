@@ -7,7 +7,6 @@ PWA B2B de conocimiento seguro. El frontend es dumb; la autoridad es el backend 
 ```
 Frontend PWA
     → HTTP API (Hono :8000)
-        → NeMo Guardrails sidecar (:8001)
         → Supabase (Auth, Postgres+RLS, Storage)
         → OpenAI
 ```

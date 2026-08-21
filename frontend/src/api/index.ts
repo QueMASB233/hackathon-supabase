@@ -2,6 +2,8 @@ import { getApi } from './runtime'
 
 export const api = {
   auth: {
+    login: (input: Parameters<ReturnType<typeof getApi>['auth']['login']>[0]) =>
+      getApi().auth.login(input),
     requestLink: (input: Parameters<ReturnType<typeof getApi>['auth']['requestLink']>[0]) =>
       getApi().auth.requestLink(input),
     signupBusiness: (input: Parameters<ReturnType<typeof getApi>['auth']['signupBusiness']>[0]) =>

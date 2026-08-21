@@ -9,8 +9,7 @@ Hono API :8000
         ├── user client (anon + JWT) → RLS / Storage
         ├── admin client (service_role) → invite hash, seed, audit
         ├── OpenAI (embeddings + chat)
-        └── NeMo sidecar :8001
-                └── Postgres + pgvector
+        └── Postgres + pgvector
 ```
 
 El frontend no usa `supabase-js`. `VITE_API_MODE=http` activa [`frontend/src/api/adapters/http`](../frontend/src/api/adapters/http/index.ts).

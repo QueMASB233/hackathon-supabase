@@ -11,16 +11,6 @@ npm install
 npm run dev            # http://localhost:8000
 ```
 
-Sidecar NeMo (otro terminal):
-
-```bash
-cd backend/guardrails
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app:app --port 8001
-```
-
 Migraciones (Supabase CLI o SQL editor, en orden):
 
 `supabase/migrations/001_*.sql` … `011_*.sql`

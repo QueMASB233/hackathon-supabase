@@ -5,34 +5,36 @@ import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { describeError, ERROR_COPY } from '../lib/errorCopy'
 
+const MIN_PASSWORD = 8
+
 export function SignupPage() {
   const navigate = useNavigate()
   const [organizationName, setOrganizationName] = useState('')
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<{ title: string; body: string } | null>(null)
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault()
-    if (!email.includes('@') || organizationName.trim().length < 2) {
+    if (
+      !email.includes('@') ||
+      organizationName.trim().length < 2 ||
+      password.length < MIN_PASSWORD
+    ) {
       setError(ERROR_COPY.VALIDATION)
       return
     }
     setLoading(true)
     setError(null)
     try {
-      const result = await api.auth.signupBusiness({
+      await api.auth.signupBusiness({
         email,
+        password,
         organizationName: organizationName.trim(),
       })
-      navigate('/check-email', {
-        state: {
-          email: result.email,
-          devLink: result.devLink,
-          organizationName: organizationName.trim(),
-          origin: 'signup',
-        },
-      })
+      const me = await api.me.get()
+      navigate(me.homePath, { replace: true })
     } catch (err) {
       setError(describeError(err))
     } finally {
@@ -47,9 +49,7 @@ export function SignupPage() {
       <div>
         <p className="font-mono text-[11px] tracking-[0.2em] text-brass uppercase">Empresa</p>
         <h2 className="mt-2 font-display text-4xl tracking-display">Crea tu espacio</h2>
-        <p className="mt-2 text-ink/65">
-          Registro para agencias. Te enviamos un enlace de acceso. Sin contraseñas.
-        </p>
+        <p className="mt-2 text-ink/65">Registro para agencias. Entras de inmediato.</p>
       </div>
       <Input
         label="Nombre de la empresa"
@@ -69,13 +69,23 @@ export function SignupPage() {
         onChange={(event) => setEmail(event.target.value)}
         required
       />
+      <Input
+        label="Contraseña"
+        type="password"
+        autoComplete="new-password"
+        hint={`Mínimo ${MIN_PASSWORD} caracteres.`}
+        value={password}
+        onChange={(event) => setPassword(event.target.value)}
+        required
+        minLength={MIN_PASSWORD}
+      />
       {copy ? (
         <p className="text-sm text-alert" role="alert">
           {copy.title} {copy.body}
         </p>
       ) : null}
       <Button type="submit" disabled={loading}>
-        {loading ? 'Enviando enlace…' : 'Enviar enlace de acceso'}
+        {loading ? 'Creando cuenta…' : 'Crear cuenta'}
       </Button>
       <p className="text-sm text-ink/50">
         ¿Ya tienes cuenta?{' '}

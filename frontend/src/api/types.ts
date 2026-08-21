@@ -153,8 +153,14 @@ export type MagicLinkSent = {
 }
 
 export type AuthApi = {
+  /** Businesses use a password; the magic link is only for invited clients. */
+  login: (input: { email: string; password: string }) => Promise<Session>
+  signupBusiness: (input: {
+    email: string
+    password: string
+    organizationName: string
+  }) => Promise<Session>
   requestLink: (input: { email: string }) => Promise<MagicLinkSent>
-  signupBusiness: (input: { email: string; organizationName: string }) => Promise<MagicLinkSent>
   resendLink: (input: { email: string }) => Promise<MagicLinkSent & { retryAfterSec: number }>
   completeSession: (input: { token: string }) => Promise<Session>
   logout: () => Promise<void>

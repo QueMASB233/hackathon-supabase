@@ -3,7 +3,6 @@ import { createApp } from '../../src/app.ts'
 import { createLogger } from '../../src/lib/logger.ts'
 import type { AppDeps } from '../../src/types.ts'
 import { OpenAiService } from '../../src/services/openai.ts'
-import { GuardrailsClient } from '../../src/services/guardrailsClient.ts'
 import type { Env } from '../../src/config/env.ts'
 
 const env = {
@@ -12,7 +11,6 @@ const env = {
   SUPABASE_SERVICE_ROLE_KEY: 'service',
   OPENAI_MODEL: 'gpt-4o-mini',
   OPENAI_EMBEDDING_MODEL: 'text-embedding-3-small',
-  GUARDRAILS_URL: 'http://127.0.0.1:8001',
   PORT: 8000,
   CORS_ORIGIN: 'http://localhost:5173',
   LOG_LEVEL: 'silent',
@@ -64,7 +62,6 @@ function createDeps(options?: { user?: { id: string; email: string } | null; mem
     anon: { auth: { signInWithOtp: vi.fn(), verifyOtp: vi.fn() }, from } as never,
     userClient: () => ({ from } as never),
     openai: new OpenAiService(env),
-    guardrails: new GuardrailsClient(env.GUARDRAILS_URL),
     logger: createLogger('silent'),
     now: () => new Date('2026-08-21T12:00:00.000Z'),
   }
@@ -93,9 +90,25 @@ describe('HTTP security', () => {
     const res = await app.request('http://local/api/auth/signup-business', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ email: 'mathias@elevabuilds.com' }),
+      body: JSON.stringify({ email: 'mathias@elevabuilds.com', password: 'demo1234' }),
     })
     expect(res.status).toBe(422)
+  })
+
+  it('rejects a business password shorter than 8 characters', async () => {
+    const app = createApp(createDeps())
+    const res = await app.request('http://local/api/auth/signup-business', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        email: 'mathias@elevabuilds.com',
+        password: 'demo',
+        organizationName: 'Eleva Builds',
+      }),
+    })
+    expect(res.status).toBe(422)
+    const body = (await res.json()) as { code?: string }
+    expect(body.code).toBe('VALIDATION')
   })
 
   it('denies a client querying another workspace', async () => {

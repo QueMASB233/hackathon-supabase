@@ -14,6 +14,7 @@ import {
   issuedLinks,
   messages,
   MOCK_EXPIRED_TOKEN,
+  passwords,
   pendingInvites,
   rateBucket,
   sessionEmail,
@@ -72,6 +73,13 @@ function normalizeEmail(email: string) {
   return email.trim().toLowerCase()
 }
 
+function openSession(email: string) {
+  const token = `mock.${email}`
+  setSessionToken(token)
+  setSessionEmail(email)
+  return { token }
+}
+
 function issueLink(email: string, organizationName?: string) {
   const token = `mock-link-${Math.random().toString(36).slice(2, 10)}`
   issuedLinks.unshift({ token, email, issuedAt: Date.now(), organizationName })
@@ -88,24 +96,25 @@ function clientWorkspaceCaps(id: string): Permission[] {
 
 export const mockApi: Api = {
   auth: {
-    async requestLink({ email }) {
+    async login({ email, password }) {
       await sleep(380)
       const normalized = normalizeEmail(email)
-      hitRate(`link:${normalized}`, 8)
-      if (normalized === 'contacto@jose.com') {
-        throw new ApiError('INVITE_PENDING', 403, 'Tu invitación está pendiente.')
+      hitRate(`login:${normalized}`, 10)
+      const user = users[normalized]
+      if (!user || user.kind !== 'business' || passwords[normalized] !== password) {
+        throw new ApiError('UNAUTHORIZED', 401, 'Correo o contraseña incorrectos.')
       }
-      if (!users[normalized]) {
-        throw new ApiError('NOT_FOUND', 404, 'No encontramos una cuenta con este correo.')
-      }
-      return { email: normalized, devLink: issueLink(normalized) }
+      return openSession(normalized)
     },
-    async signupBusiness({ email, organizationName }) {
+    async signupBusiness({ email, password, organizationName }) {
       await sleep(380)
       const normalized = normalizeEmail(email)
       hitRate(`signup:${normalized}`, 8)
       if (!organizationName.trim()) {
         throw new ApiError('VALIDATION', 422, 'Revisa la información ingresada.')
+      }
+      if (password.length < 8) {
+        throw new ApiError('VALIDATION', 422, 'La contraseña necesita al menos 8 caracteres.')
       }
       if (normalized === 'contacto@jose.com') {
         throw new ApiError('INVITE_PENDING', 403, 'Tu invitación está pendiente.')
@@ -113,7 +122,34 @@ export const mockApi: Api = {
       if (users[normalized]) {
         throw new ApiError('CONFLICT', 409, 'Ya hay una cuenta con este correo.')
       }
-      return { email: normalized, devLink: issueLink(normalized, organizationName.trim()) }
+      const org = organizationName.trim()
+      users[normalized] = {
+        id: `user-${normalized}`,
+        email: normalized,
+        displayName: org,
+        organizationName: org,
+        homePath: '/app/dashboard',
+        permissions: BUSINESS_PERMS,
+        kind: 'business',
+      }
+      passwords[normalized] = password
+      return openSession(normalized)
+    },
+    async requestLink({ email }) {
+      await sleep(380)
+      const normalized = normalizeEmail(email)
+      hitRate(`link:${normalized}`, 8)
+      if (normalized === 'contacto@jose.com') {
+        throw new ApiError('INVITE_PENDING', 403, 'Tu invitación está pendiente.')
+      }
+      const user = users[normalized]
+      if (!user) {
+        throw new ApiError('NOT_FOUND', 404, 'No encontramos una cuenta con este correo.')
+      }
+      if (user.kind === 'business') {
+        throw new ApiError('VALIDATION', 422, 'Las cuentas de empresa entran con su contraseña.')
+      }
+      return { email: normalized, devLink: issueLink(normalized) }
     },
     async resendLink({ email }) {
       await sleep(280)
@@ -135,23 +171,7 @@ export const mockApi: Api = {
       if (!issued) {
         throw new ApiError('CODE_INVALID', 422, 'El enlace no es válido.')
       }
-      const normalized = issued.email
-      if (!users[normalized]) {
-        const org = issued.organizationName || normalized
-        users[normalized] = {
-          id: `user-${normalized}`,
-          email: normalized,
-          displayName: org,
-          organizationName: org,
-          homePath: '/app/dashboard',
-          permissions: BUSINESS_PERMS,
-          kind: 'business',
-        }
-      }
-      const sessionToken = `mock.${normalized}`
-      setSessionToken(sessionToken)
-      setSessionEmail(normalized)
-      return { token: sessionToken }
+      return openSession(issued.email)
     },
     async logout() {
       await sleep(120)

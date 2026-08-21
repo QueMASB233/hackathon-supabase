@@ -54,6 +54,11 @@ function nav(workspaceId: string, withAudit: boolean) {
 
 export type MockUser = Me & { kind: 'business' | 'client'; workspaceId?: string }
 
+/** Demo credentials for the mock adapter. Businesses sign in with a password. */
+export const passwords: Record<string, string> = {
+  'mathias@mathias.sa': 'demo1234',
+}
+
 export const users: Record<string, MockUser> = {
   'mathias@mathias.sa': {
     id: 'user-mathias',

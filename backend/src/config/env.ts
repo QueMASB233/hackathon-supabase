@@ -7,7 +7,6 @@ const EnvSchema = z.object({
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_MODEL: z.string().default('gpt-4o-mini'),
   OPENAI_EMBEDDING_MODEL: z.string().default('text-embedding-3-small'),
-  GUARDRAILS_URL: z.string().url().default('http://127.0.0.1:8001'),
   PORT: z.coerce.number().default(8000),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
   APP_URL: z.string().url().optional(),

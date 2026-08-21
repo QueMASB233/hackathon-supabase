@@ -37,20 +37,22 @@ async function* streamQuery(input: {
   }
 }
 
+async function startSession(path: string, body: unknown) {
+  const session = await apiFetch<{ token: string }>(path, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
+  setSessionToken(session.token)
+  return session
+}
+
 export const httpApi: Api = {
   auth: {
+    login: (input) => startSession('/api/auth/login', input),
+    signupBusiness: (input) => startSession('/api/auth/signup-business', input),
     requestLink: (input) => apiFetch('/api/auth/request-link', { method: 'POST', body: JSON.stringify(input) }),
-    signupBusiness: (input) =>
-      apiFetch('/api/auth/signup-business', { method: 'POST', body: JSON.stringify(input) }),
     resendLink: (input) => apiFetch('/api/auth/resend-link', { method: 'POST', body: JSON.stringify(input) }),
-    completeSession: async (input) => {
-      const session = await apiFetch<{ token: string }>('/api/auth/session', {
-        method: 'POST',
-        body: JSON.stringify(input),
-      })
-      setSessionToken(session.token)
-      return session
-    },
+    completeSession: (input) => startSession('/api/auth/session', input),
     logout: async () => {
       try {
         await apiFetch('/api/auth/logout', { method: 'POST' })

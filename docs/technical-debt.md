@@ -104,15 +104,15 @@ Medium
 
 ### Problema
 
-NeMo `LLMRails` es opcional: el sidecar aplica Colang de forma determinista y solo llama el runtime NVIDIA si importa.
+No hay filtro de contenido sobre la entrada ni la salida de la IA. El sidecar de guardrails se eliminó porque no estaba desplegado y hacía fallar `/api/ai/query`.
 
 ### Impacto
 
-Sin `nemoguardrails` instalado, las reglas siguen activas pero no hay LLM-as-judge.
+Un prompt de jailbreak no se bloquea explícitamente. El aislamiento entre workspaces sigue garantizado por RLS y por el `workspace_id` del retrieval, así que no hay fuga cross-tenant.
 
 ### Solución futura
 
-Exigir el paquete en el entorno de demo.
+Moderación in-process (por ejemplo, la API de moderación de OpenAI) en vez de un servicio aparte.
 
 ### Prioridad
 

@@ -14,23 +14,27 @@ Códigos: `UNAUTHORIZED | FORBIDDEN | NOT_FOUND | CONFLICT | VALIDATION | RATE_L
 
 ## Auth
 
-Passwordless por **magic link**. No hay códigos ni contraseñas.
+Empresas con contraseña; clientes invitados con magic link.
 
-- `POST /api/auth/request-link` `{ email }` → `{ email }` (cuentas existentes)
-- `POST /api/auth/signup-business` `{ email, organizationName }` → `{ email }` (agencia nueva)
+- `POST /api/auth/login` `{ email, password }` → `{ token }`
+- `POST /api/auth/signup-business` `{ email, password, organizationName }` → `{ token }`
+- `POST /api/auth/request-link` `{ email }` → `{ email }` (cliente invitado)
 - `POST /api/auth/resend-link` `{ email }` → `{ email, retryAfterSec }`
-- `POST /api/auth/session` `{ token }` → `{ token }` (JWT de Supabase, ya verificado)
+- `POST /api/auth/session` `{ token }` → `{ token }` (JWT del magic link, ya verificado)
 - `POST /api/auth/logout` → 204
 - `GET /api/invites/:token` → preview (lookup por hash; sin sesión)
 - `POST /api/invites/:token/accept` `{ email }` → `{ email }`
 
-Flujo: el backend pide el enlace a Supabase con `emailRedirectTo = {APP_URL}/auth/callback`. Supabase verifica el enlace y devuelve el `access_token` en el fragmento de la URL. El PWA lo envía a `POST /api/auth/session`, que revalida el JWT con `auth.getUser` y recién ahí aprovisiona `profiles`, membresías y `businesses`.
+`signup-business` crea el usuario con `email_confirm: true` y devuelve sesión de inmediato, así el registro no depende del envío de correo. Contraseña mínima de 8 caracteres. Rechaza si el correo ya tiene profile (`CONFLICT`) o invitación pendiente (`INVITE_PENDING`). Credenciales inválidas en `login` → `401 UNAUTHORIZED`.
 
-`request-link` solo para emails en `profiles` o invitaciones `accepted`. Invitación `pending` → `INVITE_PENDING`.
+Magic link: el backend lo pide a Supabase con `emailRedirectTo = {APP_URL}/auth/callback`. Supabase verifica el enlace y devuelve el `access_token` en el fragmento de la URL. El PWA lo envía a `POST /api/auth/session`, que revalida el JWT con `auth.getUser` y recién ahí aprovisiona `profiles` y membresías. Enlace inválido o ya usado → `CODE_INVALID`; vencido → `CODE_EXPIRED`.
 
-`signup-business` rechaza si el correo ya tiene profile (`CONFLICT`) o invitación pendiente. El `organizationName` viaja como `user_metadata.organization_name` de Supabase, así el registro sobrevive si el usuario abre el enlace en otro dispositivo. El rol nunca viaja en el body: lo deriva el backend en `session`.
+`request-link` solo para invitaciones `accepted` o perfiles de cliente. Invitación `pending` → `INVITE_PENDING`. Una cuenta de empresa recibe `422` pidiéndole que use su contraseña.
 
-Enlace inválido o ya usado → `CODE_INVALID`; enlace vencido → `CODE_EXPIRED`.
+## Salud
+
+- `GET /health` → `{ ok: true }`
+- `GET /health/deps` → `{ ok, database, openai: { configured, ok, reason? } }`; `503` si algo falla
 
 ## Sesión
 

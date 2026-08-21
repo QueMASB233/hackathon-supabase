@@ -37,27 +37,6 @@ export function aiRoutes(deps: AppDeps) {
         .eq('workspace_id', workspaceId)
         .maybeSingle()
       if (!conversation) throw notFound()
-      const { data: workspace } = await userClient.from('workspaces').select('name').eq('id', workspaceId).maybeSingle()
-
-      try {
-        await deps.guardrails.check({
-          stage: 'input',
-          message: content,
-          workspaceName: workspace?.name,
-        })
-      } catch (error) {
-        if (error instanceof ApiError && ['PROMPT_BLOCKED', 'OUT_OF_SCOPE', 'AI_BLOCKED'].includes(error.code)) {
-          await writeAudit(deps.admin, {
-            actorUserId: user.id,
-            workspaceId,
-            action: 'GUARDRAIL_BLOCKED',
-            resourceType: 'conversation',
-            resourceId: conversationId,
-            metadata: { code: error.code, stage: 'input' },
-          })
-        }
-        throw error
-      }
 
       await writeAudit(deps.admin, {
         actorUserId: user.id,
@@ -105,13 +84,6 @@ export function aiRoutes(deps: AppDeps) {
             assembled += token
             await out.write(JSON.stringify({ type: 'token', text: token }) + '\n')
           }
-
-          await deps.guardrails.check({
-            stage: 'output',
-            message: assembled,
-            workspaceName: workspace?.name,
-            retrievedContext: context.slice(0, 4000),
-          })
 
           const sources = chunks.slice(0, 4).map((chunk) => ({
             documentId: chunk.documentId,
@@ -171,16 +143,6 @@ export function aiRoutes(deps: AppDeps) {
             { code, reason: error instanceof Error ? error.message : 'unknown' },
             'ai query failed mid-stream',
           )
-          if (isApi && ['PROMPT_BLOCKED', 'OUT_OF_SCOPE', 'AI_BLOCKED'].includes(error.code)) {
-            await writeAudit(deps.admin, {
-              actorUserId: user.id,
-              workspaceId,
-              action: 'GUARDRAIL_BLOCKED',
-              resourceType: 'conversation',
-              resourceId: conversationId,
-              metadata: { code: error.code, stage: 'output' },
-            })
-          }
           await out.write(JSON.stringify({ type: 'error', code, message }) + '\n')
         }
       })

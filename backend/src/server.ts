@@ -5,7 +5,6 @@ import { hydrateDotEnv } from './lib/dotenv.ts'
 import { createLogger } from './lib/logger.ts'
 import { createAdminClient, createAnonClient, createUserClient } from './lib/supabase.ts'
 import { OpenAiService } from './services/openai.ts'
-import { GuardrailsClient } from './services/guardrailsClient.ts'
 
 hydrateDotEnv()
 
@@ -18,7 +17,6 @@ const app = createApp({
   anon: createAnonClient(env),
   userClient: (token) => createUserClient(env, token),
   openai: new OpenAiService(env),
-  guardrails: new GuardrailsClient(env.GUARDRAILS_URL),
   logger,
   now: () => new Date(),
 })

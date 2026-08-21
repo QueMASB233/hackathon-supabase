@@ -2,7 +2,6 @@ import type { Logger } from 'pino'
 import type { SupabaseClient, User } from '@supabase/supabase-js'
 import type { Env } from './config/env.ts'
 import type { OpenAiService } from './services/openai.ts'
-import type { GuardrailsClient } from './services/guardrailsClient.ts'
 
 export type AuthedUser = {
   id: string
@@ -27,7 +26,6 @@ export type AppDeps = {
   anon: SupabaseClient
   userClient: (accessToken: string) => SupabaseClient
   openai: OpenAiService
-  guardrails: GuardrailsClient
   logger: Logger
   now: () => Date
 }

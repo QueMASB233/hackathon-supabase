@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.1]
+
+### Removed
+
+- Sidecar NeMo Guardrails y sus llamadas en el path de IA. En producción el sidecar no estaba desplegado y `POST /api/ai/query` devolvía `500` por fail-closed.
+
 ## [0.2.0]
 
 ### Added
