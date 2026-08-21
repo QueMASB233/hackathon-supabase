@@ -22,6 +22,7 @@ import {
   setSessionEmail,
   users,
   workspaces,
+  BUSINESS_PERMS,
 } from './db'
 import { sleep } from './sleep'
 
@@ -96,6 +97,22 @@ export const mockApi: Api = {
       issuedCodes.push({ email: normalized, issuedAt: Date.now() })
       return { email: normalized }
     },
+    async signupBusiness({ email, organizationName }) {
+      await sleep(380)
+      const normalized = normalizeEmail(email)
+      hitRate(`signup:${normalized}`, 8)
+      if (!organizationName.trim()) {
+        throw new ApiError('VALIDATION', 422, 'Revisa la información ingresada.')
+      }
+      if (normalized === 'contacto@jose.com') {
+        throw new ApiError('INVITE_PENDING', 403, 'Tu invitación está pendiente.')
+      }
+      if (users[normalized]) {
+        throw new ApiError('CONFLICT', 409, 'Ya hay una cuenta con este correo.')
+      }
+      issuedCodes.push({ email: normalized, issuedAt: Date.now(), organizationName: organizationName.trim() })
+      return { email: normalized }
+    },
     async resendCode({ email }) {
       await sleep(280)
       const normalized = normalizeEmail(email)
@@ -103,7 +120,7 @@ export const mockApi: Api = {
       issuedCodes.push({ email: normalized, issuedAt: Date.now() })
       return { email: normalized, retryAfterSec: 30 }
     },
-    async verifyCode({ email, code }) {
+    async verifyCode({ email, code, intent, organizationName }) {
       await sleep(420)
       const normalized = normalizeEmail(email)
       hitRate(`verify:${normalized}`, 8)
@@ -117,7 +134,19 @@ export const mockApi: Api = {
         throw new ApiError('CODE_INVALID', 422, 'Código inválido.')
       }
       if (!users[normalized]) {
-        throw new ApiError('NOT_FOUND', 404, 'No encontramos una cuenta con este correo.')
+        if (intent !== 'business_signup') {
+          throw new ApiError('NOT_FOUND', 404, 'No encontramos una cuenta con este correo.')
+        }
+        const org = organizationName?.trim() || issuedCodes.find((item) => item.email === normalized)?.organizationName || normalized
+        users[normalized] = {
+          id: `user-${normalized}`,
+          email: normalized,
+          displayName: org,
+          organizationName: org,
+          homePath: '/app/dashboard',
+          permissions: BUSINESS_PERMS,
+          kind: 'business',
+        }
       }
       const token = `mock.${normalized}`
       setSessionToken(token)

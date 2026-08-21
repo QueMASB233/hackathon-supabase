@@ -146,8 +146,14 @@ export type AiChunk =
 
 export type AuthApi = {
   requestCode: (input: { email: string }) => Promise<{ email: string }>
+  signupBusiness: (input: { email: string; organizationName: string }) => Promise<{ email: string }>
   resendCode: (input: { email: string }) => Promise<{ email: string; retryAfterSec: number }>
-  verifyCode: (input: { email: string; code: string }) => Promise<Session>
+  verifyCode: (input: {
+    email: string
+    code: string
+    intent?: 'business_signup'
+    organizationName?: string
+  }) => Promise<Session>
   logout: () => Promise<void>
   previewInvite: (token: string) => Promise<InvitePreview>
   acceptInvite: (input: { token: string; email: string }) => Promise<{ email: string }>

@@ -9,7 +9,14 @@ import { ERROR_COPY, type ErrorCopyKey } from '../lib/errorCopy'
 export function VerifyPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const email = (location.state as { email?: string } | null)?.email
+  const state = location.state as {
+    email?: string
+    intent?: 'business_signup'
+    organizationName?: string
+  } | null
+  const email = state?.email
+  const intent = state?.intent
+  const organizationName = state?.organizationName
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [resendIn, setResendIn] = useState(30)
@@ -34,7 +41,11 @@ export function VerifyPage() {
     setLoading(true)
     setError(null)
     try {
-      await api.auth.verifyCode({ email, code })
+      await api.auth.verifyCode({
+        email,
+        code,
+        ...(intent === 'business_signup' ? { intent, organizationName } : {}),
+      })
       const me = await api.me.get()
       navigate(me.homePath, { replace: true })
     } catch (err) {
@@ -64,6 +75,12 @@ export function VerifyPage() {
         <h2 className="mt-2 font-display text-4xl tracking-display">Código de 6 dígitos</h2>
         <p className="mt-2 text-ink/65">
           Lo enviamos a <span className="text-ink">{email}</span>
+          {organizationName ? (
+            <>
+              {' '}
+              para registrar <span className="text-ink">{organizationName}</span>
+            </>
+          ) : null}
         </p>
       </div>
       <OtpInput value={code} onChange={setCode} />
@@ -84,7 +101,7 @@ export function VerifyPage() {
         >
           {resendIn > 0 ? `Reenviar en ${resendIn}s` : 'Reenviar código'}
         </button>
-        <Link to="/login" className="text-ink/55">
+        <Link to={intent === 'business_signup' ? '/signup' : '/login'} className="text-ink/55">
           Cambiar correo
         </Link>
       </div>

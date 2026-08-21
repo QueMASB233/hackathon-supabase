@@ -24,6 +24,7 @@ export const DOCUMENT_STATUS_LABEL: Record<string, string> = {
 
 export const AUDIT_LABEL: Record<string, string> = {
   LOGIN: 'Inicio de sesión',
+  BUSINESS_CREATED: 'Empresa registrada',
   INVITATION_CREATED: 'Invitación creada',
   INVITATION_ACCEPTED: 'Invitación aceptada',
   CLIENT_CREATED: 'Cliente creado',

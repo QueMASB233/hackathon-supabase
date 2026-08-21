@@ -4,6 +4,8 @@ export const api = {
   auth: {
     requestCode: (input: Parameters<ReturnType<typeof getApi>['auth']['requestCode']>[0]) =>
       getApi().auth.requestCode(input),
+    signupBusiness: (input: Parameters<ReturnType<typeof getApi>['auth']['signupBusiness']>[0]) =>
+      getApi().auth.signupBusiness(input),
     resendCode: (input: Parameters<ReturnType<typeof getApi>['auth']['resendCode']>[0]) =>
       getApi().auth.resendCode(input),
     verifyCode: (input: Parameters<ReturnType<typeof getApi>['auth']['verifyCode']>[0]) =>

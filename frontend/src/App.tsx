@@ -4,6 +4,7 @@ import { AppShell } from './layouts/AppShell'
 import { RequireSession } from './layouts/RequireSession'
 import { WorkspaceLayout } from './layouts/WorkspaceLayout'
 import { LoginPage } from './pages/LoginPage'
+import { SignupPage } from './pages/SignupPage'
 import { VerifyPage } from './pages/VerifyPage'
 import { InvitePage } from './pages/InvitePage'
 import { HomeRedirect } from './pages/HomeRedirect'
@@ -22,6 +23,7 @@ export default function App() {
       <Routes>
         <Route element={<AuthLayout />}>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
           <Route path="/verify" element={<VerifyPage />} />
           <Route path="/invite/:token" element={<InvitePage />} />
         </Route>

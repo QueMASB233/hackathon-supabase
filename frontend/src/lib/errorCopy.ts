@@ -14,8 +14,8 @@ export const ERROR_COPY: Record<ApiErrorCode, { title: string; body: string }> =
     body: 'Es posible que el enlace esté incompleto o ya no exista.',
   },
   CONFLICT: {
-    title: 'El recurso ya existe.',
-    body: 'Revisa el nombre o el correo e inténtalo de nuevo.',
+    title: 'Ya hay una cuenta con este correo.',
+    body: 'Inicia sesión o usa el enlace de invitación que te envió tu empresa.',
   },
   VALIDATION: {
     title: 'Revisa la información ingresada.',

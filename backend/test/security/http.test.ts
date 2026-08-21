@@ -88,6 +88,16 @@ describe('HTTP security', () => {
     expect(res.status).toBe(401)
   })
 
+  it('rejects business signup without organization name', async () => {
+    const app = createApp(createDeps())
+    const res = await app.request('http://local/api/auth/signup-business', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'mathias@elevabuilds.com' }),
+    })
+    expect(res.status).toBe(422)
+  })
+
   it('denies a client querying another workspace', async () => {
     const app = createApp(
       createDeps({

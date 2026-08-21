@@ -14,14 +14,17 @@ Códigos: `UNAUTHORIZED | FORBIDDEN | NOT_FOUND | CONFLICT | VALIDATION | RATE_L
 
 ## Auth
 
-- `POST /api/auth/request-code` `{ email }` → `{ email }`
+- `POST /api/auth/request-code` `{ email }` → `{ email }` (cuentas existentes)
+- `POST /api/auth/signup-business` `{ email, organizationName }` → `{ email }` (agencia nueva; OTP)
 - `POST /api/auth/resend-code` `{ email }` → `{ email, retryAfterSec }`
-- `POST /api/auth/verify` `{ email, code }` → `{ token }` (JWT de Supabase)
+- `POST /api/auth/verify` `{ email, code, intent?, organizationName? }` → `{ token }` (JWT de Supabase)
 - `POST /api/auth/logout` → 204
 - `GET /api/invites/:token` → preview (lookup por hash; sin sesión)
 - `POST /api/invites/:token/accept` `{ email }` → `{ email }`
 
 `request-code` solo para emails en `profiles` o invitaciones `accepted`. Invitación `pending` → `INVITE_PENDING`.
+
+`signup-business` rechaza si el correo ya tiene profile (`CONFLICT`) o invitación pendiente. Tras `verify` con `intent: "business_signup"` el backend crea `profiles` + `businesses`; el rol no viaja en el body.
 
 ## Sesión
 

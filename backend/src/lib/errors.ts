@@ -30,7 +30,7 @@ export const ERROR_MESSAGE: Record<ApiErrorCode, string> = {
   UNAUTHORIZED: 'Tu sesión expiró.',
   FORBIDDEN: 'No tienes acceso a este recurso.',
   NOT_FOUND: 'No encontramos este workspace.',
-  CONFLICT: 'El recurso ya existe.',
+  CONFLICT: 'Ya hay una cuenta con este correo.',
   VALIDATION: 'Revisa la información ingresada.',
   RATE_LIMITED: 'Has realizado demasiadas solicitudes. Intenta nuevamente en unos momentos.',
   SERVER: 'Algo salió mal.',

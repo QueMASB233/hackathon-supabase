@@ -40,6 +40,8 @@ async function* streamQuery(input: {
 export const httpApi: Api = {
   auth: {
     requestCode: (input) => apiFetch('/api/auth/request-code', { method: 'POST', body: JSON.stringify(input) }),
+    signupBusiness: (input) =>
+      apiFetch('/api/auth/signup-business', { method: 'POST', body: JSON.stringify(input) }),
     resendCode: (input) => apiFetch('/api/auth/resend-code', { method: 'POST', body: JSON.stringify(input) }),
     verifyCode: (input) => apiFetch('/api/auth/verify', { method: 'POST', body: JSON.stringify(input) }),
     logout: () => apiFetch('/api/auth/logout', { method: 'POST' }),
