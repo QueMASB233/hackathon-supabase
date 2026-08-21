@@ -4,10 +4,12 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AppDeps, HonoEnv } from '../../types.ts'
 import { clientKey, rateLimit } from '../../middleware/rateLimit.ts'
 import {
-  codeExpired,
   conflict,
+  forbidden,
   invitePending,
   notFound,
+  rateLimited,
+  serverError,
   unauthorized,
   validation,
 } from '../../lib/errors.ts'
@@ -38,10 +40,25 @@ async function sendMagicLink(
       ...(input.organizationName ? { data: { organization_name: input.organizationName } } : {}),
     },
   })
-  if (error) {
-    if (error.message.toLowerCase().includes('rate')) throw codeExpired()
-    throw validation(error.message)
+  if (!error) return
+
+  // Supabase failures here are almost always delivery or policy problems, not
+  // bad input, so log the raw reason before collapsing it into a client code.
+  deps.logger.warn({ supabaseError: error.message, status: error.status }, 'magic link not sent')
+
+  const reason = error.message.toLowerCase()
+  if (reason.includes('rate limit') || reason.includes('you can only request')) {
+    throw rateLimited(
+      'Supabase limitó el envío de correos. Espera unos minutos o configura un SMTP propio.',
+    )
   }
+  if (reason.includes('signups not allowed') || reason.includes('disabled')) {
+    throw forbidden('El registro por correo está deshabilitado en Supabase.')
+  }
+  if (reason.includes('error sending')) {
+    throw serverError('Supabase no pudo enviar el correo. Revisa la configuración de SMTP.')
+  }
+  throw validation(error.message)
 }
 
 async function findProfile(admin: SupabaseClient, email: string) {
@@ -75,11 +92,15 @@ async function provisionUser(
 
   const fallbackName = user.email.split('@')[0] || user.email
   const displayName = prior?.display_name || user.organizationName || fallbackName
-  await admin.from('profiles').upsert({
+  const { error: profileError } = await admin.from('profiles').upsert({
     id: user.id,
     email: user.email,
     display_name: displayName,
   })
+  if (profileError) {
+    deps.logger.error({ supabaseError: profileError.message }, 'profile upsert failed')
+    throw serverError('No pudimos crear tu perfil.')
+  }
 
   const { data: accepted } = await admin
     .from('invitations')
@@ -123,7 +144,10 @@ async function provisionUser(
   const name = user.organizationName || displayName
   await admin.from('profiles').update({ display_name: name }).eq('id', user.id)
   const { error } = await admin.from('businesses').insert({ name, owner_id: user.id })
-  if (error && !error.message.toLowerCase().includes('duplicate')) throw validation()
+  if (error && !error.message.toLowerCase().includes('duplicate')) {
+    deps.logger.error({ supabaseError: error.message }, 'business insert failed')
+    throw serverError('No pudimos crear tu empresa.')
+  }
   await writeAudit(admin, {
     actorUserId: user.id,
     action: 'BUSINESS_CREATED',

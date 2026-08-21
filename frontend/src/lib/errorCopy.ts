@@ -1,3 +1,4 @@
+import { isApiError } from '../api/errors'
 import type { ApiErrorCode } from '../api/types'
 
 export const ERROR_COPY: Record<ApiErrorCode, { title: string; body: string }> = {
@@ -64,4 +65,17 @@ export type ErrorCopyKey = ApiErrorCode
 export function getErrorCopy(code: string) {
   if (code in ERROR_COPY) return ERROR_COPY[code as ErrorCopyKey]
   return ERROR_COPY.SERVER
+}
+
+/**
+ * The API sends a specific reason for auth failures (SMTP down, signups off,
+ * Supabase throttling). Prefer it over the generic copy so the user is told
+ * what to actually do.
+ */
+export function describeError(error: unknown) {
+  const code = isApiError(error) ? error.code : 'SERVER'
+  const copy = getErrorCopy(code)
+  const message = isApiError(error) ? error.message.trim() : ''
+  const specific = message && message !== copy.title
+  return { code, title: copy.title, body: specific ? message : copy.body }
 }

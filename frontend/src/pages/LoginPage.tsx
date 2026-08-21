@@ -1,21 +1,20 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
-import { isApiError } from '../api/errors'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
-import { ERROR_COPY, type ErrorCopyKey } from '../lib/errorCopy'
+import { describeError, ERROR_COPY } from '../lib/errorCopy'
 
 export function LoginPage() {
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<ErrorCopyKey | null>(null)
+  const [error, setError] = useState<{ title: string; body: string } | null>(null)
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault()
     if (!email.includes('@')) {
-      setError('VALIDATION')
+      setError(ERROR_COPY.VALIDATION)
       return
     }
     setLoading(true)
@@ -26,13 +25,13 @@ export function LoginPage() {
         state: { email: result.email, devLink: result.devLink, origin: 'login' },
       })
     } catch (err) {
-      setError(isApiError(err) ? err.code : 'SERVER')
+      setError(describeError(err))
     } finally {
       setLoading(false)
     }
   }
 
-  const copy = error ? ERROR_COPY[error] : null
+  const copy = error
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-5">

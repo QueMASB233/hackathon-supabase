@@ -3,12 +3,11 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../api'
 import { queryKeys } from '../api/hooks'
-import { isApiError } from '../api/errors'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { ErrorState } from '../components/ui/ErrorState'
 import { Skeleton } from '../components/ui/Skeleton'
-import { ERROR_COPY, type ErrorCopyKey } from '../lib/errorCopy'
+import { describeError } from '../lib/errorCopy'
 
 export function InvitePage() {
   const { token = '' } = useParams()
@@ -21,7 +20,7 @@ export function InvitePage() {
   })
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<ErrorCopyKey | null>(null)
+  const [error, setError] = useState<{ title: string; body: string } | null>(null)
 
   if (invite.isLoading) {
     return (
@@ -47,13 +46,13 @@ export function InvitePage() {
         state: { email: link.email, devLink: link.devLink, origin: 'invite' },
       })
     } catch (err) {
-      setError(isApiError(err) ? err.code : 'SERVER')
+      setError(describeError(err))
     } finally {
       setLoading(false)
     }
   }
 
-  const copy = error ? ERROR_COPY[error] : null
+  const copy = error
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-5">

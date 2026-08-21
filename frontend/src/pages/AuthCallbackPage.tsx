@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api'
-import { isApiError } from '../api/errors'
 import { Button } from '../components/ui/Button'
 import { Skeleton } from '../components/ui/Skeleton'
-import { ERROR_COPY, type ErrorCopyKey } from '../lib/errorCopy'
+import { describeError, ERROR_COPY } from '../lib/errorCopy'
 
 // Supabase returns the session in the URL fragment (implicit flow) and
 // failures as fragment params too.
@@ -21,7 +20,7 @@ function readFragment() {
 
 export function AuthCallbackPage() {
   const navigate = useNavigate()
-  const [error, setError] = useState<ErrorCopyKey | null>(null)
+  const [error, setError] = useState<{ title: string; body: string } | null>(null)
   const started = useRef(false)
 
   useEffect(() => {
@@ -33,11 +32,11 @@ export function AuthCallbackPage() {
     window.history.replaceState({}, '', window.location.pathname)
 
     if (errorCode) {
-      setError(errorCode.includes('expired') ? 'CODE_EXPIRED' : 'CODE_INVALID')
+      setError(errorCode.includes('expired') ? ERROR_COPY.CODE_EXPIRED : ERROR_COPY.CODE_INVALID)
       return
     }
     if (!token) {
-      setError('CODE_INVALID')
+      setError(ERROR_COPY.CODE_INVALID)
       return
     }
 
@@ -47,7 +46,7 @@ export function AuthCallbackPage() {
         const me = await api.me.get()
         navigate(me.homePath, { replace: true })
       } catch (err) {
-        setError(isApiError(err) ? err.code : 'SERVER')
+        setError(describeError(err))
       }
     })()
   }, [navigate])
@@ -63,14 +62,12 @@ export function AuthCallbackPage() {
     )
   }
 
-  const copy = ERROR_COPY[error]
-
   return (
     <div className="flex flex-col gap-5">
       <div>
         <p className="font-mono text-[11px] tracking-[0.2em] text-brass uppercase">Verificación</p>
-        <h2 className="mt-2 font-display text-4xl tracking-display">{copy.title}</h2>
-        <p className="mt-2 text-ink/65">{copy.body}</p>
+        <h2 className="mt-2 font-display text-4xl tracking-display">{error.title}</h2>
+        <p className="mt-2 text-ink/65">{error.body}</p>
       </div>
       <Link to="/login">
         <Button className="w-full">Pedir un enlace nuevo</Button>

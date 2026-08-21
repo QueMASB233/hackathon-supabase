@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { api } from '../api'
-import { isApiError } from '../api/errors'
 import { Button } from '../components/ui/Button'
-import { ERROR_COPY, type ErrorCopyKey } from '../lib/errorCopy'
+import { describeError } from '../lib/errorCopy'
 
 type CheckEmailState = {
   email?: string
@@ -20,7 +19,7 @@ export function CheckEmailPage() {
 
   const [devLink, setDevLink] = useState(state.devLink)
   const [resendIn, setResendIn] = useState(30)
-  const [error, setError] = useState<ErrorCopyKey | null>(null)
+  const [error, setError] = useState<{ title: string; body: string } | null>(null)
   const [sending, setSending] = useState(false)
 
   useEffect(() => {
@@ -44,13 +43,13 @@ export function CheckEmailPage() {
       setDevLink(result.devLink)
       setResendIn(result.retryAfterSec)
     } catch (err) {
-      setError(isApiError(err) ? err.code : 'SERVER')
+      setError(describeError(err))
     } finally {
       setSending(false)
     }
   }
 
-  const copy = error ? ERROR_COPY[error] : null
+  const copy = error
 
   return (
     <div className="flex flex-col gap-5">
