@@ -1,7 +1,7 @@
 import { ApiError, statusToCode } from './errors'
 import { clearSessionToken, getSessionToken } from './session'
 
-const baseUrl = () => import.meta.env.VITE_API_BASE_URL ?? ''
+const baseUrl = import.meta.env.VITE_API_BASE_URL ?? ''
 
 export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers)
