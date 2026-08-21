@@ -12,6 +12,17 @@ export type GuardrailsResult = {
 export class GuardrailsClient {
   constructor(private readonly baseUrl: string) {}
 
+  async ping(): Promise<boolean> {
+    try {
+      const response = await fetch(`${this.baseUrl.replace(/\/$/, '')}/health`, {
+        signal: AbortSignal.timeout(4_000),
+      })
+      return response.ok
+    } catch {
+      return false
+    }
+  }
+
   async check(input: {
     stage: GuardrailsStage
     message: string

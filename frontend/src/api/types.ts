@@ -143,6 +143,8 @@ export type AiChunk =
   | { type: 'token'; text: string }
   | { type: 'sources'; sources: SourceRef[] }
   | { type: 'done'; message: ChatMessage }
+  /** Sent when the answer fails after streaming began, so the UI is not left waiting. */
+  | { type: 'error'; code: ApiErrorCode; message: string }
 
 export type MagicLinkSent = {
   email: string

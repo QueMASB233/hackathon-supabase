@@ -58,6 +58,27 @@ export function createApp(deps: AppDeps) {
 
   app.get('/health', (c) => c.json({ ok: true }))
 
+  // A missing sidecar or API key only fails at query time, which looks like a
+  // broken chat with no clue as to why. Report it up front instead.
+  app.get('/health/deps', async (c) => {
+    const probeDatabase = async () => {
+      try {
+        const { error } = await deps.admin
+          .from('profiles')
+          .select('id', { count: 'exact', head: true })
+        return !error
+      } catch {
+        return false
+      }
+    }
+    const [guardrails, database] = await Promise.all([deps.guardrails.ping(), probeDatabase()])
+    const openai = deps.openai.enabled()
+    return c.json(
+      { ok: guardrails && database && openai, guardrails, database, openai },
+      guardrails && database && openai ? 200 : 503,
+    )
+  })
+
   app.route('/api/auth', authRoutes(deps))
   app.route('/api/invites', invitationRoutes(deps))
   app.route('/api/me', meRoutes(deps))

@@ -6,7 +6,7 @@ import type { AppDeps, HonoEnv } from '../../types.ts'
 import { authMiddleware } from '../../middleware/auth.ts'
 import { requireWorkspace } from '../../middleware/requireWorkspace.ts'
 import { clientKey, rateLimit } from '../../middleware/rateLimit.ts'
-import { notFound, validation, serverError, ApiError } from '../../lib/errors.ts'
+import { notFound, validation, serverError, ApiError, ERROR_MESSAGE } from '../../lib/errors.ts'
 import { writeAudit } from '../../services/audit.ts'
 import { locatorFor, RAG_SYSTEM, retrieveChunks } from '../../services/rag.ts'
 
@@ -86,70 +86,93 @@ export function aiRoutes(deps: AppDeps) {
       c.header('content-type', 'application/x-ndjson; charset=utf-8')
       return stream(c, async (out) => {
         let assembled = ''
-        for await (const token of deps.openai.chat({
-          system: RAG_SYSTEM,
-          user: content,
-          context,
-        })) {
-          assembled += token
-          await out.write(JSON.stringify({ type: 'token', text: token }) + '\n')
-        }
+        try {
+          for await (const token of deps.openai.chat({
+            system: RAG_SYSTEM,
+            user: content,
+            context,
+          })) {
+            assembled += token
+            await out.write(JSON.stringify({ type: 'token', text: token }) + '\n')
+          }
 
-        await deps.guardrails.check({
-          stage: 'output',
-          message: assembled,
-          workspaceName: workspace?.name,
-          retrievedContext: context.slice(0, 4000),
-        })
+          await deps.guardrails.check({
+            stage: 'output',
+            message: assembled,
+            workspaceName: workspace?.name,
+            retrievedContext: context.slice(0, 4000),
+          })
 
-        const sources = chunks.slice(0, 4).map((chunk) => ({
-          documentId: chunk.documentId,
-          documentName: chunk.filename,
-          locator: locatorFor(chunk),
-        }))
-        await out.write(JSON.stringify({ type: 'sources', sources }) + '\n')
+          const sources = chunks.slice(0, 4).map((chunk) => ({
+            documentId: chunk.documentId,
+            documentName: chunk.filename,
+            locator: locatorFor(chunk),
+          }))
+          await out.write(JSON.stringify({ type: 'sources', sources }) + '\n')
 
-        const messageId = randomUUID()
-        await userClient.from('messages').insert({
-          id: messageId,
-          conversation_id: conversationId,
-          workspace_id: workspaceId,
-          role: 'assistant',
-          content: assembled,
-          status: 'sent',
-        })
-        if (sources.length) {
-          await userClient.from('message_sources').insert(
-            chunks.slice(0, 4).map((chunk) => ({
-              message_id: messageId,
-              document_id: chunk.documentId,
-              chunk_id: chunk.id,
-              locator: locatorFor(chunk),
-            })),
+          const messageId = randomUUID()
+          await userClient.from('messages').insert({
+            id: messageId,
+            conversation_id: conversationId,
+            workspace_id: workspaceId,
+            role: 'assistant',
+            content: assembled,
+            status: 'sent',
+          })
+          if (sources.length) {
+            await userClient.from('message_sources').insert(
+              chunks.slice(0, 4).map((chunk) => ({
+                message_id: messageId,
+                document_id: chunk.documentId,
+                chunk_id: chunk.id,
+                locator: locatorFor(chunk),
+              })),
+            )
+          }
+          await writeAudit(deps.admin, {
+            actorUserId: user.id,
+            workspaceId,
+            action: 'AI_RESPONSE',
+            resourceType: 'message',
+            resourceId: messageId,
+            metadata: { role },
+          })
+          await out.write(
+            JSON.stringify({
+              type: 'done',
+              message: {
+                id: messageId,
+                conversationId,
+                role: 'assistant',
+                content: assembled,
+                status: 'sent',
+                sources,
+                createdAt: deps.now().toISOString(),
+              },
+            }) + '\n',
           )
+        } catch (error) {
+          // Headers are already sent, so onError cannot answer. Without an
+          // explicit chunk the client just sees the stream stop.
+          const isApi = error instanceof ApiError
+          const code = isApi ? error.code : 'SERVER'
+          const message = isApi ? error.message : ERROR_MESSAGE.SERVER
+          c.get('logger')?.error(
+            { code, reason: error instanceof Error ? error.message : 'unknown' },
+            'ai query failed mid-stream',
+          )
+          if (isApi && ['PROMPT_BLOCKED', 'OUT_OF_SCOPE', 'AI_BLOCKED'].includes(error.code)) {
+            await writeAudit(deps.admin, {
+              actorUserId: user.id,
+              workspaceId,
+              action: 'GUARDRAIL_BLOCKED',
+              resourceType: 'conversation',
+              resourceId: conversationId,
+              metadata: { code: error.code, stage: 'output' },
+            })
+          }
+          await out.write(JSON.stringify({ type: 'error', code, message }) + '\n')
         }
-        await writeAudit(deps.admin, {
-          actorUserId: user.id,
-          workspaceId,
-          action: 'AI_RESPONSE',
-          resourceType: 'message',
-          resourceId: messageId,
-          metadata: { role },
-        })
-        await out.write(
-          JSON.stringify({
-            type: 'done',
-            message: {
-              id: messageId,
-              conversationId,
-              role: 'assistant',
-              content: assembled,
-              status: 'sent',
-              sources,
-              createdAt: deps.now().toISOString(),
-            },
-          }) + '\n',
-        )
       })
     },
   )

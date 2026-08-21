@@ -95,6 +95,11 @@ export function ChatPage() {
             draft.sources = chunk.sources
             setPendingAssistant({ ...draft })
           }
+          if (chunk.type === 'error') {
+            setPendingAssistant(null)
+            setGuard(chunk.code)
+            break
+          }
           if (chunk.type === 'done') {
             setPendingAssistant(null)
             queryClient.setQueryData<ChatMessage[]>(queryKeys.messages(activeId), (current) => [
