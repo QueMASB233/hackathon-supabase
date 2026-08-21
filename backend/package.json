@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "node --import tsx -e \"console.log('tsx ok')\"",
+    "build": "npm install",
     "start": "node --import tsx src/server.ts",
     "seed": "node --import tsx src/scripts/seed.ts",
     "test": "vitest run",
