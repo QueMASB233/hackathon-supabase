@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "echo skip",
-    "start": "tsx src/server.ts",
-    "seed": "tsx src/scripts/seed.ts",
+    "build": "node --import tsx -e \"console.log('tsx ok')\"",
+    "start": "node --import tsx src/server.ts",
+    "seed": "node --import tsx src/scripts/seed.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
